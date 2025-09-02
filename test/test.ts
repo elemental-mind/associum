@@ -1,16 +1,27 @@
-import { UnorderedKeyMapTests, OrderedKeyMapTests, StructuredKeyMapTests } from '../source/associatium.spec';
+import { UnorderedKeymapTests, OrderedKeyMapTests, StructuredKeyMapTests } from "../source/associatium.spec";
 
-function runTests() {
-    const unorderedTests = new UnorderedKeyMapTests();
-    unorderedTests.should...();
+function run()
+{
+    const unordered = new UnorderedKeymapTests();
+    unordered.shouldSetAndGet();
+    unordered.shouldHave();
+    unordered.shouldDelete();
+    unordered.shouldOverrideExistingKey();
 
-    const orderedTests = new OrderedKeyMapTests();
-    orderedTests.should...();
+    const ordered = new OrderedKeyMapTests();
+    ordered.shouldSetAndGet();
+    ordered.shouldHave();
+    ordered.shouldDelete();
+    ordered.shouldOverrideExistingKey();
 
-    const structuredTests = new StructuredKeyMapTests();
-    structuredTests.should...();
+    const structured = new StructuredKeyMapTests();
+    structured.shouldSetAndGet();
+    structured.shouldQueryPartial();
+    structured.shouldDelete();
+    structured.shouldHave();
+    structured.shouldOverrideExistingKey();
 
-    console.log("All tests successful");
+    console.log("All tests invoked");
 }
 
-runTests();
+run();
