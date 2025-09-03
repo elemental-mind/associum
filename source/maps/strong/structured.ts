@@ -1,6 +1,6 @@
-import { MultiKeyMap } from './base';
+import { MultikeyMap } from './base';
 
-export class StructuredMultiKeyMap<K extends object, V> extends MultiKeyMap<V>
+export class StructuredMultiKeyMap<K extends object, V> extends MultikeyMap<K,V>
 {
     set(key: Readonly<K>, value: V): void
     {

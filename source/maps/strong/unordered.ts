@@ -1,37 +1,32 @@
-import { MultiKeyMap } from './base';
+import { MultikeyMap, QueryableMultikeyMap } from './base';
 
-export class UnorderedMultiKeyMap<K, V> extends MultiKeyMap<V>
+export class UnorderedMultikeyMap<K, V> extends MultikeyMap<K, V>
 {
-    set(keys: readonly K[], value: V): void
+    encodeSettingComposite(keys: readonly K[]): string
     {
-        throw new Error("Not implemented");
+        const sortedKeylets = this.mapToOrCreateKeylets(keys).sort();
+        return this.keyletsToComposite(sortedKeylets);
     }
 
-    get(keys: readonly K[]): V | undefined
+    encodeProbingComposite(keys: readonly K[]): string | undefined
     {
-        throw new Error("Not implemented");
-    }
+        const keylets: string[] = [];
+        for (const key of keys) 
+        {
+            const keylet = MultikeyMap.objectsToKeylets.get(key);
 
-    has(keys: readonly K[]): boolean
-    {
-        throw new Error("Not implemented");
-    }
+            if (!keylet) return;
 
-    delete(keys: readonly K[]): boolean
-    {
-        throw new Error("Not implemented");
+            keylets.push(keylet);
+        }
+
+        keylets.sort();
+        return this.keyletsToComposite(keylets);
     }
 }
 
-export class QueryableUnorderedMultikeyMap<K, V> extends UnorderedMultiKeyMap<K, V>
+export class QueryableUnorderedMultikeyMap<K, V> extends QueryableMultikeyMap<K, V>
 {
-    set(keys: readonly K[], value: V): void
-    {
-        throw new Error("Not implemented");
-    }
-
-    query(keys: readonly K[])
-    {
-        throw new Error("Not implemented");
-    }
+    encodeSettingComposite = UnorderedMultikeyMap.prototype.encodeSettingComposite;
+    encodeProbingComposite = UnorderedMultikeyMap.prototype.encodeProbingComposite;
 }
