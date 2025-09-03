@@ -1,4 +1,4 @@
-import { MultiKeyMap } from './multiKeyMap';
+import { MultiKeyMap } from './base';
 
 export class UnorderedMultiKeyMap<K, V> extends MultiKeyMap<V>
 {

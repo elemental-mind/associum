@@ -1,4 +1,4 @@
-import { WeakMultiKeyMap } from './weakMultiKeyMap';
+import { WeakMultiKeyMap } from './base';
 
 export class WeakStructuredMultiKeyMap<TKey extends object, TValue> extends WeakMultiKeyMap
 {

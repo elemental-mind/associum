@@ -1,4 +1,4 @@
-import { MultiKeyMap } from './multiKeyMap';
+import { MultiKeyMap } from './base';
 import { StringListIntersector } from '../../helpers/intersection';
 import type { MultikeyMapQueryResult } from '../../associatium';
 

@@ -1,4 +1,4 @@
-import { WeakMultiKeyMap } from './weakMultiKeyMap';
+import { WeakMultiKeyMap } from './base';
 
 export class WeakUnorderedMultiKeyMap<K extends object, V> extends WeakMultiKeyMap
 {

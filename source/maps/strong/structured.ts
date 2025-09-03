@@ -1,4 +1,4 @@
-import { MultiKeyMap } from './multiKeyMap';
+import { MultiKeyMap } from './base';
 
 export class StructuredMultiKeyMap<K extends object, V> extends MultiKeyMap<V>
 {
