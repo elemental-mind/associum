@@ -1,7 +1,7 @@
 import type { MultikeyMapQueryResult } from '../../associatium';
-import { MultikeyMap, QueryableMultikeyMap } from './base';
+import { ArrayMultikeyMap, QueryableArrayMultikeyMap } from './base';
 
-export class OrderedMultiKeyMap<K, V> extends MultikeyMap<K, V>
+export class OrderedMultiKeyMap<K extends Array<any>, V> extends ArrayMultikeyMap<K, V>
 {
     encodeSettingComposite(keys: readonly K[]): string
     {
@@ -14,7 +14,7 @@ export class OrderedMultiKeyMap<K, V> extends MultikeyMap<K, V>
     }
 }
 
-export class QueryableOrderedMultikeyMap<K, V> extends QueryableMultikeyMap<K, V>
+export class OrderedQueryableMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
 {
     encodeSettingComposite = OrderedMultiKeyMap.prototype.encodeSettingComposite;
     encodeProbingComposite = OrderedMultiKeyMap.prototype.encodeProbingComposite;
@@ -29,7 +29,7 @@ export class QueryableOrderedMultikeyMap<K, V> extends QueryableMultikeyMap<K, V
      *  map.query(["D", "B"]) // yields [], as there is a key with "B" and "D", but not in the right order
      * ```
      */
-    queryWithOrderedFragment(keys: readonly K[]): MultikeyMapQueryResult<K, V>[]
+    queryWithOrderedFragment(keys: K): MultikeyMapQueryResult<K, V>[]
     {
         const { keylets, compositesWithKeylets } = this.getAllCompositesContaining(keys);
 

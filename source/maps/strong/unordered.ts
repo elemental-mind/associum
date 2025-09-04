@@ -1,14 +1,14 @@
-import { MultikeyMap, QueryableMultikeyMap } from './base';
+import { ArrayMultikeyMap, MultikeyMap, QueryableArrayMultikeyMap } from './base';
 
-export class UnorderedMultikeyMap<K, V> extends MultikeyMap<K, V>
+export class UnorderedMultikeyMap<K extends Array<any>, V> extends ArrayMultikeyMap<K, V>
 {
-    encodeSettingComposite(keys: readonly K[]): string
+    encodeSettingComposite(keys: K): string
     {
         const sortedKeylets = this.mapToOrCreateKeylets(keys).sort();
         return this.keyletsToComposite(sortedKeylets);
     }
 
-    encodeProbingComposite(keys: readonly K[]): string | undefined
+    encodeProbingComposite(keys: K): string | undefined
     {
         const keylets: string[] = [];
         for (const key of keys) 
@@ -25,7 +25,7 @@ export class UnorderedMultikeyMap<K, V> extends MultikeyMap<K, V>
     }
 }
 
-export class QueryableUnorderedMultikeyMap<K, V> extends QueryableMultikeyMap<K, V>
+export class UnorderedQueryableMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
 {
     encodeSettingComposite = UnorderedMultikeyMap.prototype.encodeSettingComposite;
     encodeProbingComposite = UnorderedMultikeyMap.prototype.encodeProbingComposite;
