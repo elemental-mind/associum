@@ -63,12 +63,12 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
 {
     protected keyletToComposites = new Map<string, string>();
 
-    set(keys: K, value: V): void
+    set(keys: K, value: V)
     {
         const composite = this.encodeSettingComposite(keys);
 
-        if (!this.map.has(composite))
-            return;
+        if (!Map.prototype.has.call(this, composite))
+            return this;
 
         for (const field in keys)
         {
@@ -77,7 +77,9 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
             this.linkKeyletToComposite(keylet, composite);
         }
 
-        this.map.set(composite, value);
+        Map.prototype.set.call(this, composite, value);
+
+        return this;
     }
 
     query(queryTemplate: Partial<K>): MultikeyMapQueryResult<K, V>[]
@@ -114,7 +116,7 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
                 result.push(
                     {
                         key: this.buildKeyObject(compositeKeylets) as K,
-                        value: this.map.get(composite)!
+                        value: Map.prototype.get.call(this, composite)!
                     });
             }
         }
@@ -125,7 +127,7 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
     delete(keys: K): boolean
     {
         const composite = this.encodeProbingComposite(keys);
-        if (!composite || !this.map.delete(composite))
+        if (!composite || !Map.prototype.delete.call(this, composite))
             return false;
 
         this.deleteCompositeFromKeyletMappings(composite);

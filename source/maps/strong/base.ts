@@ -3,14 +3,12 @@ import { AlphaNumeric } from "identigenium/sets";
 import { StringListIntersector } from "../../helpers/intersection.ts";
 import { MultikeyMapQueryResult } from "../../associatium.ts";
 
-export abstract class MultikeyMap<K, V>
+export abstract class MultikeyMap<K, V> extends Map<any, V>
 {
     static idProvider = new IDProvider(AlphaNumeric);
     static objectsToKeylets = new Map<any, string>();
     static keyletCountRegistry = new Map<string, number>();
     static keyletsToObjects = new Map<string, any>();
-
-    protected map = new Map<string, V>();
 
     /**
      * Encodes the given keys into a composite string that can be used as a key in the internal map for setting values.
@@ -30,10 +28,11 @@ export abstract class MultikeyMap<K, V>
      */
     abstract encodeProbingComposite(keys: K): string | undefined;
 
-    set(keys: K, value: V): void
+    set(keys: K, value: V)
     {
         const composite = this.encodeSettingComposite(keys);
-        this.map.set(composite, value);
+        super.set(composite, value);
+        return this;
     }
 
     get(keys: K): V | undefined
@@ -42,7 +41,7 @@ export abstract class MultikeyMap<K, V>
         if (!composite)
             return;
         else
-            return this.map.get(composite);
+            return super.get(composite);
     }
 
     has(keys: K): boolean
@@ -51,7 +50,7 @@ export abstract class MultikeyMap<K, V>
         if (!composite)
             return false;
         else
-            return this.map.has(composite);
+            return super.has(composite);
     }
 
     delete(keys: K): boolean
@@ -60,7 +59,7 @@ export abstract class MultikeyMap<K, V>
         if (!composite)
             return false;
 
-        if (!this.map.delete(composite))
+        if (!super.delete(composite))
             return false;
 
         this.freeComposite(composite);
@@ -70,10 +69,10 @@ export abstract class MultikeyMap<K, V>
 
     clear()
     {
-        for (const composite of this.map.keys())
+        for (const composite of super.keys())
             this.freeComposite(composite);
 
-        this.map.clear();
+        super.clear();
     }
 
     //Key management functions
@@ -177,11 +176,11 @@ export abstract class QueryableArrayMultikeyMap<K extends Array<any>, V> extends
     //This holds associations like ... "abc" => "a_dba_abc|abc_ndf_b|bla_abc_foo" ... with keylets separated by _ and composites separated by |
     keyletToComposites = new Map<string, string>();
 
-    set(keys: K, value: V): void
+    set(keys: K, value: V)
     {
         const compositeKey = this.encodeSettingComposite(keys);
 
-        if (!this.map.has(compositeKey))
+        if (!Map.prototype.has.call(this, compositeKey))
         {
             for (const key of keys)
             {
@@ -192,7 +191,8 @@ export abstract class QueryableArrayMultikeyMap<K extends Array<any>, V> extends
             }
         }
 
-        this.map.set(compositeKey, value);
+        Map.prototype.set.call(this, compositeKey, value);
+        return this;
     }
 
     /**
@@ -262,7 +262,7 @@ export abstract class QueryableArrayMultikeyMap<K extends Array<any>, V> extends
     protected generateResultObject(compositeKey: string): MultikeyMapQueryResult<K, V>
     {
         const key = this.keyletsToKeys(compositeKey.split("_"));
-        const value = this.map.get(compositeKey)!;
+        const value = Map.prototype.get.call(this, compositeKey)!;
 
         return { key, value };
     }
