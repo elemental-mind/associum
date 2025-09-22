@@ -12,7 +12,22 @@ export abstract class MultikeyMap<K, V>
 
     protected map = new Map<string, V>();
 
+    /**
+     * Encodes the given keys into a composite string that can be used as a key in the internal map for setting values.
+     * This method is called when setting a value and must always produce a valid composite.
+     * Subclasses must implement this to define how multiple keys are combined into a single string.
+     * @param keys - The tuple of keys to encode.
+     * @returns The composite string representation of the keys.
+     */
     abstract encodeSettingComposite(keys: K): string;
+
+    /**
+     * Encodes the given keys into a composite string for probing (getting, checking, or deleting) from the map.
+     * Returns undefined if the keys cannot be encoded, e.g., if they are not yet registered or invalid for lookup.
+     * Subclasses must implement this to define how to probe for existing key combinations.
+     * @param keys - The tuple of keys to probe.
+     * @returns The composite string if encodable, otherwise undefined.
+     */
     abstract encodeProbingComposite(keys: K): string | undefined;
 
     set(keys: K, value: V): void
@@ -59,6 +74,19 @@ export abstract class MultikeyMap<K, V>
             this.freeComposite(composite);
 
         this.map.clear();
+    }
+
+    //Key management functions
+    protected ensureAndReturnKeylet(key: any)
+    {
+        const id = MultikeyMap.objectsToKeylets.get(key);
+        if (id) return id;
+
+        const newId = MultikeyMap.idProvider.generateID();
+        MultikeyMap.objectsToKeylets.set(key, newId);
+        MultikeyMap.keyletsToObjects.set(newId, key);
+        this.bindKeylet(newId);
+        return newId;
     }
 
     //Key composition functions
@@ -111,20 +139,10 @@ export abstract class ArrayMultikeyMap<K extends Array<any>, V> extends Multikey
     protected mapToOrCreateKeylets(keys: readonly any[]): string[]
     {
         const result: string[] = [];
+
         for (const key of keys)
-        {
-            const id = MultikeyMap.objectsToKeylets.get(key);
-            if (id)
-                result.push(id);
-            else
-            {
-                const newId = MultikeyMap.idProvider.generateID();
-                MultikeyMap.objectsToKeylets.set(key, newId);
-                MultikeyMap.keyletsToObjects.set(newId, key);
-                this.bindKeylet(newId);
-                result.push(newId);
-            }
-        }
+            result.push(this.ensureAndReturnKeylet(key));
+
         return result;
     }
 
@@ -146,7 +164,7 @@ export abstract class ArrayMultikeyMap<K extends Array<any>, V> extends Multikey
     protected keyletsToKeys(keylets: string[])
     {
         const result = [] as unknown as K;
-        
+
         for (const keylet of keylets)
             result.push(MultikeyMap.keyletsToObjects.get(keylet)!);
 
