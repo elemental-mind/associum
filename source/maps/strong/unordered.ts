@@ -25,7 +25,7 @@ export class UnorderedMultikeyMap<K extends Array<any>, V> extends ArrayMultikey
     }
 }
 
-export class UnorderedQueryableMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
+export class QueryableUnorderedMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
 {
     encodeSettingComposite = UnorderedMultikeyMap.prototype.encodeSettingComposite;
     encodeProbingComposite = UnorderedMultikeyMap.prototype.encodeProbingComposite;

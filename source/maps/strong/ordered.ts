@@ -14,7 +14,7 @@ export class OrderedMultiKeyMap<K extends Array<any>, V> extends ArrayMultikeyMa
     }
 }
 
-export class OrderedQueryableMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
+export class QueryableOrderedMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
 {
     encodeSettingComposite = OrderedMultiKeyMap.prototype.encodeSettingComposite;
     encodeProbingComposite = OrderedMultiKeyMap.prototype.encodeProbingComposite;
