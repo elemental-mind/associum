@@ -2,7 +2,9 @@ import * as assert from 'assert';
 import
 {
     OrderedMultiKeyMap,
-    UnorderedMultiKeyMap,
+    UnorderedMultikeyMap,
+    QueryableStructuredMultiKeyMap,
+    MultikeyMapQueryResult,
     StructuredMultiKeyMap,
 } from "./associatium";
 
@@ -11,7 +13,7 @@ export class UnorderedKeymapTests
 {
     shouldSetAndGet()
     {
-        const map = new UnorderedMultiKeyMap<string, number>();
+        const map = new UnorderedMultikeyMap<string[], number>();
         map.set(["A", "B"], 2);
 
         assert.equal(map.get(["A", "B"]), 2);
@@ -21,7 +23,7 @@ export class UnorderedKeymapTests
 
     shouldHave()
     {
-        const map = new UnorderedMultiKeyMap<string, number>();
+        const map = new UnorderedMultikeyMap<string[], number>();
         map.set(["X", "Y"], 5);
 
         assert.ok(map.has(["Y", "X"]));
@@ -30,15 +32,15 @@ export class UnorderedKeymapTests
 
     shouldDelete()
     {
-        const map = new UnorderedMultiKeyMap<string, number>();
+        const map = new UnorderedMultikeyMap<string[], number>();
         map.set(["X", "Y"], 5);
 
         // Test deletion with keys in reverse order
         const deletedReverse = map.delete(["Y", "X"]);
 
         assert.ok(deletedReverse);
-        assert.equal(map.has(["X", "Y"]), 0);
-        assert.equal(map.has(["Y", "X"]), 0);
+        assert.equal(map.has(["X", "Y"]), false);
+        assert.equal(map.has(["Y", "X"]), false);
 
         // Reset for testing deletion with keys in order
         map.set(["X", "Y"], 5);
@@ -47,13 +49,13 @@ export class UnorderedKeymapTests
         const deletedInOrder = map.delete(["X", "Y"]);
 
         assert.ok(deletedInOrder);
-        assert.equal(map.has(["X", "Y"]), 0);
-        assert.equal(map.has(["Y", "X"]), 0);
+        assert.equal(map.has(["X", "Y"]), false);
+        assert.equal(map.has(["Y", "X"]), false);
     }
 
     shouldOverrideExistingKey()
     {
-        const map = new UnorderedMultiKeyMap<string, number>();
+        const map = new UnorderedMultikeyMap<string[], number>();
         map.set(["A", "B"], 1);
 
         assert.equal(map.get(["A", "B"]), 1);
@@ -77,7 +79,7 @@ export class OrderedKeyMapTests
 {
     shouldSetAndGet()
     {
-        const map = new OrderedMultiKeyMap<string, number>();
+        const map = new OrderedMultiKeyMap<string[], number>();
         map.set(["A", "B"], 1);
 
         assert.equal(map.get(["A", "B"]), 1);
@@ -86,27 +88,27 @@ export class OrderedKeyMapTests
 
     shouldHave()
     {
-        const map = new OrderedMultiKeyMap<string, number>();
+        const map = new OrderedMultiKeyMap<string[], number>();
         map.set(["X", "Y"], 5);
 
         assert.ok(map.has(["X", "Y"]));
-        assert.equal(map.has(["Y", "X"]), 0);
+        assert.equal(map.has(["Y", "X"]), false);
     }
 
     shouldDelete()
     {
-        const map = new OrderedMultiKeyMap<string, number>();
+        const map = new OrderedMultiKeyMap<string[], number>();
         map.set(["X", "Y"], 5);
 
         const deleted = map.delete(["X", "Y"]);
 
         assert.ok(deleted);
-        assert.equal(map.has(["X", "Y"]), 0);
+        assert.equal(map.has(["X", "Y"]), false);
     }
 
     shouldOverrideExistingKey()
     {
-        const map = new OrderedMultiKeyMap<string, number>();
+        const map = new OrderedMultiKeyMap<string[], number>();
         map.set(["A", "B"], 1);
 
         assert.equal(map.get(["A", "B"]), 1);
@@ -133,14 +135,14 @@ export class StructuredKeyMapTests
     shouldQueryPartial()
     {
         type UserRole = { user: string; role: string; };
-        const map = new StructuredMultiKeyMap<UserRole, number>();
+        const map = new QueryableStructuredMultiKeyMap<UserRole, number>();
 
         map.set({ user: "u1", role: "admin" }, 1);
         map.set({ user: "u1", role: "editor" }, 0);
         map.set({ user: "u2", role: "admin" }, 1);
 
         const results = map.query({ user: "u1" });
-        const roles = results.map(result => result.key.role).sort();
+        const roles = results.map((result: MultikeyMapQueryResult<UserRole, number>) => result.key.role).sort();
 
         assert.equal(roles.length, 2);
         assert.equal(roles.join(","), "admin,editor");
@@ -158,7 +160,7 @@ export class StructuredKeyMapTests
         const deleted = map.delete({ user: "u3", role: "viewer" });
 
         assert.ok(deleted);
-        assert.equal(map.has({ user: "u3", role: "viewer" }), 0);
+        assert.equal(map.has({ user: "u3", role: "viewer" }), false);
     }
 
     shouldHave()
@@ -169,7 +171,7 @@ export class StructuredKeyMapTests
         map.set({ user: "u1", role: "admin" }, 1);
 
         assert.ok(map.has({ user: "u1", role: "admin" }));
-        assert.equal(map.has({ user: "u1", role: "guest" }), 0);
+        assert.equal(map.has({ user: "u1", role: "guest" }), false);
     }
 
     shouldOverrideExistingKey()
