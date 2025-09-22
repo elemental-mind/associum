@@ -85,15 +85,15 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
         const requiredKeyletsInOrder = this.encodeProbingArray(queryTemplate);
         if (!requiredKeyletsInOrder) return [];
 
-        const compositeIndicesThatNeedToMatchQueryKeylets: number[] = [];
+        const indicesThatNeedToMatch: number[] = [];
         for (let index = 0; index < requiredKeyletsInOrder.length; index++)
-            if (requiredKeyletsInOrder[index] !== undefined) compositeIndicesThatNeedToMatchQueryKeylets.push(index);
+            if (requiredKeyletsInOrder[index] !== undefined) indicesThatNeedToMatch.push(index);
 
         const alreadyCheckedComposites = new Set<string>();
         const result: MultikeyMapQueryResult<K, V>[] = [];
 
         keyletLoop:
-        for (const keyletIndex of compositeIndicesThatNeedToMatchQueryKeylets)
+        for (const keyletIndex of indicesThatNeedToMatch)
         {
             const keylet = requiredKeyletsInOrder[keyletIndex];
             const compositesContainingKeylet = this.keyletToComposites.get(keylet)!;
@@ -108,7 +108,7 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
                 const compositeKeylets = composite.split("_");
 
                 compositeCheckLoop:
-                for (const index of compositeIndicesThatNeedToMatchQueryKeylets)
+                for (const index of indicesThatNeedToMatch)
                     if (compositeKeylets[index] !== requiredKeyletsInOrder[index]) continue compositeLoop;
 
                 result.push(
@@ -128,8 +128,7 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
         if (!composite || !this.map.delete(composite))
             return false;
 
-        //TODO
-
+        this.deleteCompositeFromKeyletMappings(composite);
         this.freeComposite(composite);
 
         return true;
@@ -145,6 +144,20 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
     {
         const existing = this.keyletToComposites.get(keylet);
         this.keyletToComposites.set(keylet, existing ? `${existing}|${composite}` : composite);
+    }
+
+    private deleteCompositeFromKeyletMappings(composite: string): void
+    {
+        const compositeKeylets = composite.split("_");
+        for (const keylet of compositeKeylets)
+        {
+            const compositesContainingKeylet = this.keyletToComposites.get(keylet)!;
+            const filteredComposites = compositesContainingKeylet.split("|").filter(c => c !== composite).join("|");
+            if (filteredComposites)
+                this.keyletToComposites.set(keylet, filteredComposites);
+            else
+                this.keyletToComposites.delete(keylet);
+        }
     }
 
     private buildKeyObject(keyKeylets: string[])
