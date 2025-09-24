@@ -1,4 +1,4 @@
-import type { MultikeyMapQueryResult } from '../../associatium';
+import type { MultikeyMapQueryResult } from '../associatium';
 import { BaseMultiKeyMap, QueryableMultikeyMap } from './base';
 
 export class OrderedMultiKeyMap<K extends Array<any>, V> extends BaseMultiKeyMap<K, V>

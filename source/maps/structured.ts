@@ -1,4 +1,4 @@
-import { OrderedMultiKeyMap, type MultikeyMapQueryResult } from "../../associatium.ts";
+import { OrderedMultiKeyMap, type MultikeyMapQueryResult } from "../associatium.ts";
 import { BaseMultiKeyMap, QueryableMultikeyMap } from './base';
 import { QueryableOrderedMultikeyMap } from './ordered';
 
