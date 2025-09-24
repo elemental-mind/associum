@@ -1,55 +1,119 @@
 import type { MultikeyMapQueryResult } from '../../associatium';
-import { ArrayMultikeyMap, QueryableArrayMultikeyMap } from './base';
+import { MultikeyMap, QueryableMultikeyMap } from './base';
 
-export class OrderedMultiKeyMap<K extends Array<any>, V> extends ArrayMultikeyMap<K, V>
+export class OrderedMultiKeyMap<K extends Array<any>, V> extends MultikeyMap<K, V>
 {
-    encodeSettingComposite(keys: readonly K[]): string
+    protected getOrCreateComposite(keys: readonly K[]): string
     {
-        return this.keyletsToComposite(this.mapToOrCreateKeylets(keys));
+        return keys
+            .map(key => this.getOrCreateKeylet(key))
+            .join(MultikeyMap.keyletSeparator);
     }
 
-    encodeProbingComposite(keys: readonly K[]): string | undefined
+    protected resolveComposite(keys: readonly K[]): string | undefined
     {
-        return this.mapToComposite(keys);
+        const keylets: string[] = [];
+
+        for (const key of keys) 
+        {
+            const keylet = MultikeyMap.keysToKeylets.get(key);
+            if (!keylet) return;
+            keylets.push(keylet);
+        }
+
+        return keylets.join(MultikeyMap.keyletSeparator);
+    }
+
+    protected freeComposite(composite: string)
+    {
+        this.freeKeylets(composite.split(MultikeyMap.keyletSeparator));
     }
 }
 
-export class QueryableOrderedMultikeyMap<K extends Array<any>, V> extends QueryableArrayMultikeyMap<K, V>
+export class QueryableOrderedMultikeyMap<K extends Array<any>, V> extends QueryableMultikeyMap<K, V>
 {
-    encodeSettingComposite = OrderedMultiKeyMap.prototype.encodeSettingComposite;
-    encodeProbingComposite = OrderedMultiKeyMap.prototype.encodeProbingComposite;
-
-    /**
-     * Returns entries that match the key fragment in order
-     * @param keys An partial or full array of keys that need to form part of the composite key
-     * @example
-     * ```ts
-     *  map.set(["A", "B", "C", "D"], 123);
-     *  map.query(["B", "D"]) // yields [{key: ["A", "B", "C", "D"], value: 123}]
-     *  map.query(["D", "B"]) // yields [], as there is a key with "B" and "D", but not in the right order
-     * ```
-     */
-    queryWithOrderedFragment(keys: K): MultikeyMapQueryResult<K, V>[]
+    getOrCreateComposite(keys: readonly K[]): string
     {
-        const { keylets, compositesWithKeylets } = this.getAllCompositesContaining(keys);
+        const compositeRaw = keys.map(key => this.getOrCreateKeylet(key));
+        const composite = compositeRaw.join(MultikeyMap.keyletSeparator);
 
-        return compositesWithKeylets
-            .filter(compositeKey => this.compositeKeyMatchesQueryKeyletsOrder(keylets, compositeKey))
+        if (!Map.prototype.has.call(this, composite))
+        {
+            for (const keylet of new Set(compositeRaw))
+            {
+                const existing = this.keyletsToComposites.get(keylet);
+                this.keyletsToComposites.set(keylet, existing ? existing + MultikeyMap.compositeSeparator + composite : composite);
+            }
+        }
+
+        return composite;
+    }
+
+    //@ts-ignore
+    resolveComposite = OrderedMultiKeyMap.prototype.resolveComposite;
+
+    queryEntriesWithSubkeys(keys: K): MultikeyMapQueryResult<K, V>[]
+    {
+        const keylets: string[] = [];
+
+        for (const key of keys) 
+        {
+            const keylet = MultikeyMap.keysToKeylets.get(key);
+            if (!keylet) return [];
+            keylets.push(keylet);
+        }
+
+        return this
+            .findCompositesContainingAllOf(keylets)
             .map(compositeKey => this.generateResultObject(compositeKey));
     }
 
-    private compositeKeyMatchesQueryKeyletsOrder(keyletsInQueryOrder: string[], compositeKey: string)
+    queryEntriesMatching(sparseKeys: K): MultikeyMapQueryResult<K, V>[]
     {
-        let lastIndex = -1;
-        for (const keylet of keyletsInQueryOrder)
-        {
-            const foundIndex = compositeKey.indexOf(keylet, lastIndex);
-            if (foundIndex <= lastIndex)
-                return false;
+        const indicesThatNeedToMatch: number[] = [];
+        const keylets = [] as string[];
 
-            lastIndex = foundIndex + 1;
+        for (let index = 0; index < sparseKeys.length; index++)
+        {
+            if (sparseKeys[index] === undefined) continue;
+            const keylet = MultikeyMap.keysToKeylets.get(sparseKeys[index]);
+            if (!keylet) return [];
+
+            keylets[index] = keylet;
+            indicesThatNeedToMatch.push(index);
         }
 
-        return true;
+        const alreadyCheckedComposites = new Set<string>();
+        const result: MultikeyMapQueryResult<K, V>[] = [];
+
+        keyletLoop:
+        for (const keyIndex of indicesThatNeedToMatch)
+        {
+            const keylet = keylets[keyIndex];
+
+            const compositesContainingKeylet = this.keyletsToComposites.get(keylet);
+            if (!compositesContainingKeylet) return [];
+
+            compositeLoop:
+            for (const composite of compositesContainingKeylet.split(MultikeyMap.compositeSeparator))
+            {
+                if (alreadyCheckedComposites.has(composite)) continue; else alreadyCheckedComposites.add(composite);
+
+                const compositeKeylets = composite.split(MultikeyMap.keyletSeparator);
+
+                compositeCheckLoop:
+                for (const index of indicesThatNeedToMatch)
+                    if (compositeKeylets[index] !== keylets[index]) continue compositeLoop;
+
+                result.push(this.generateResultObject(composite));
+            }
+        }
+
+        return result;
+    }
+
+    protected compositeToKeys(composite: string): K
+    {
+        return composite.split(MultikeyMap.keyletSeparator).map(keylet => MultikeyMap.keyletsToKeys.get(keylet)) as K;
     }
 }

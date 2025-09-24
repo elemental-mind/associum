@@ -1,46 +1,51 @@
-import type { MultikeyMapQueryResult } from "../../associatium.ts";
-import { MultikeyMap } from './base';
+import { OrderedMultiKeyMap, type MultikeyMapQueryResult } from "../../associatium.ts";
+import { MultikeyMap, QueryableMultikeyMap } from './base';
+import { QueryableOrderedMultikeyMap } from './ordered';
 
 export class StructuredMultiKeyMap<K extends Record<string, any>, V> extends MultikeyMap<K, V>
 {
-    protected fieldCount = 0;
-    protected fieldMap: Record<string, number> = Object.create(null);
+    private fieldCount = 0;
+    private fieldMap: Record<string, number> = Object.create(null);
 
-    constructor()
+    protected getOrCreateComposite(keyObject: K): string
     {
-        super();
+        return OrderedMultiKeyMap.prototype.getOrCreateComposite.call(this, this.transformKeysToArray(keyObject));
     }
 
-    encodeSettingComposite(keys: K): string
+    protected resolveComposite(keyObject: K): string | undefined
+    {
+        const resolvedKeysArray = this.resolveKeysToArray(keyObject);
+        if (!resolvedKeysArray) return undefined;
+
+        return OrderedMultiKeyMap.prototype.resolveComposite.call(this, resolvedKeysArray);
+    }
+
+    protected freeComposite = OrderedMultiKeyMap.prototype.freeComposite;
+
+    protected transformKeysToArray(keyObject: K)
     {
         const keyletArray: any[] = [];
 
-        for (const key in keys)
+        for (const field in keyObject)
         {
-            const arrayPosition = this.fieldMap[key] ?? this.registerNewField(key);
-            keyletArray[arrayPosition] = this.ensureAndReturnKeylet(keys[key]);
+            const arrayPosition = this.fieldMap[field] ?? this.registerNewField(field);
+            keyletArray[arrayPosition] = this.getOrCreateKeylet(keyObject[field]);
         }
 
-        return this.keyletsToComposite(keyletArray);
+        return keyletArray;
     }
 
-    encodeProbingComposite(keys: K): string | undefined
-    {
-        const probeArray = this.encodeProbingArray(keys);
-        return probeArray ? this.keyletsToComposite(probeArray) : undefined;
-    }
-
-    protected encodeProbingArray(keys: Partial<K>)
+    protected resolveKeysToArray(keyObject: K)
     {
         const keyletArray: string[] = [];
 
-        for (const key in keys)
+        for (const field in keyObject)
         {
-            const arrayPosition = this.fieldMap[key];
+            const arrayPosition = this.fieldMap[field];
             if (arrayPosition === undefined)
                 return undefined;
 
-            const keylet = MultikeyMap.objectsToKeylets.get(keys[key]);
+            const keylet = MultikeyMap.keysToKeylets.get(keyObject[field]);
             if (keylet === undefined)
                 return undefined;
 
@@ -55,123 +60,50 @@ export class StructuredMultiKeyMap<K extends Record<string, any>, V> extends Mul
         this.fieldMap[name] = this.fieldCount++;
         return this.fieldMap[name];
     }
-
-
 }
 
-export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> extends StructuredMultiKeyMap<K, V>
+export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> extends QueryableMultikeyMap<K, V>
 {
-    protected keyletToComposites = new Map<string, string>();
+    private fieldCount = 0;
+    private fieldMap: Record<string, number> = Object.create(null);
 
-    set(keys: K, value: V)
+    query(partial: Partial<K>): MultikeyMapQueryResult<K, V>[]
     {
-        const composite = this.encodeSettingComposite(keys);
+        //@ts-ignore borrow transform from non-queryable structured
+        const orderedKeysArray = StructuredMultiKeyMap.prototype.resolveKeysToArray.call(this, partial);
+        if (!orderedKeysArray) return [];
 
-        if (!Map.prototype.has.call(this, composite))
-            return this;
+        //@ts-ignore reuse ordered+queryable query to find matches
+        return QueryableOrderedMultikeyMap.prototype.queryEntriesMatching.call(this, orderedKeysArray);
+    }
 
-        for (const field in keys)
+    protected getOrCreateComposite(keyObject: K): string
+    {
+        //@ts-ignore borrow transform from non-queryable structured
+        const orderedKeysArray = StructuredMultiKeyMap.prototype.transformKeysToArray.call(this, keyObject);
+        //@ts-ignore reuse ordered+queryable composition to index for queries
+        return QueryableOrderedMultikeyMap.prototype.getOrCreateComposite.call(this, orderedKeysArray);
+    }
+
+    protected resolveComposite = StructuredMultiKeyMap.prototype.resolveComposite;
+    protected freeComposite = QueryableMultikeyMap.prototype.freeComposite;
+
+    protected compositeToKeys(composite: string): K
+    {
+        const keylets = composite.split(MultikeyMap.keyletSeparator);
+        const keyObject: Record<string, any> = {};
+
+        for (const field in this.fieldMap)
         {
-            const keylet = MultikeyMap.objectsToKeylets.get(keys[field])!;
-
-            this.linkKeyletToComposite(keylet, composite);
+            const arrayPosition = this.fieldMap[field];
+            const keylet = keylets[arrayPosition];
+            if (keylet !== undefined)
+                keyObject[field] = MultikeyMap.keyletsToKeys.get(keylet);
         }
 
-        Map.prototype.set.call(this, composite, value);
-
-        return this;
+        return keyObject as K;
     }
 
-    query(queryTemplate: Partial<K>): MultikeyMapQueryResult<K, V>[]
-    {
-        const requiredKeyletsInOrder = this.encodeProbingArray(queryTemplate);
-        if (!requiredKeyletsInOrder) return [];
-
-        const indicesThatNeedToMatch: number[] = [];
-        for (let index = 0; index < requiredKeyletsInOrder.length; index++)
-            if (requiredKeyletsInOrder[index] !== undefined) indicesThatNeedToMatch.push(index);
-
-        const alreadyCheckedComposites = new Set<string>();
-        const result: MultikeyMapQueryResult<K, V>[] = [];
-
-        keyletLoop:
-        for (const keyletIndex of indicesThatNeedToMatch)
-        {
-            const keylet = requiredKeyletsInOrder[keyletIndex];
-            const compositesContainingKeylet = this.keyletToComposites.get(keylet)!;
-
-            compositeLoop:
-            for (const composite of compositesContainingKeylet.split("|"))
-            {
-                if (alreadyCheckedComposites.has(composite)) continue;
-
-                alreadyCheckedComposites.add(composite);
-
-                const compositeKeylets = composite.split("_");
-
-                compositeCheckLoop:
-                for (const index of indicesThatNeedToMatch)
-                    if (compositeKeylets[index] !== requiredKeyletsInOrder[index]) continue compositeLoop;
-
-                result.push(
-                    {
-                        key: this.buildKeyObject(compositeKeylets) as K,
-                        value: Map.prototype.get.call(this, composite)!
-                    });
-            }
-        }
-
-        return result;
-    }
-
-    delete(keys: K): boolean
-    {
-        const composite = this.encodeProbingComposite(keys);
-        if (!composite || !Map.prototype.delete.call(this, composite))
-            return false;
-
-        this.deleteCompositeFromKeyletMappings(composite);
-        this.freeComposite(composite);
-
-        return true;
-    }
-
-    clear()
-    {
-        super.clear();
-        this.keyletToComposites.clear();
-    }
-
-    private linkKeyletToComposite(keylet: string, composite: string): void
-    {
-        const existing = this.keyletToComposites.get(keylet);
-        this.keyletToComposites.set(keylet, existing ? `${existing}|${composite}` : composite);
-    }
-
-    private deleteCompositeFromKeyletMappings(composite: string): void
-    {
-        const compositeKeylets = composite.split("_");
-        for (const keylet of compositeKeylets)
-        {
-            const compositesContainingKeylet = this.keyletToComposites.get(keylet)!;
-            const filteredComposites = compositesContainingKeylet.split("|").filter(c => c !== composite).join("|");
-            if (filteredComposites)
-                this.keyletToComposites.set(keylet, filteredComposites);
-            else
-                this.keyletToComposites.delete(keylet);
-        }
-    }
-
-    private buildKeyObject(keyKeylets: string[])
-    {
-        const keyObject = {} as Record<string, any>;
-        for (const key in this.fieldMap)
-        {
-            const keyIndex = this.fieldMap[key];
-
-            if (keyKeylets[keyIndex])
-                keyObject[key] = MultikeyMap.keyletsToObjects.get(keyKeylets[keyIndex]);
-        }
-        return keyObject;
-    }
+    // Needed by borrowed transformKeysToArray
+    private registerNewField = StructuredMultiKeyMap.prototype.registerNewField;
 }

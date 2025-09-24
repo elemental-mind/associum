@@ -6,9 +6,12 @@ import { MultikeyMapQueryResult } from "../../associatium.ts";
 export abstract class MultikeyMap<K, V> extends Map<any, V>
 {
     static idProvider = new IDProvider(AlphaNumeric);
-    static objectsToKeylets = new Map<any, string>();
+    static keysToKeylets = new Map<any, string>();
     static keyletCountRegistry = new Map<string, number>();
-    static keyletsToObjects = new Map<string, any>();
+    static keyletsToKeys = new Map<string, any>();
+
+    static keyletSeparator = "_";
+    static compositeSeparator = "|";
 
     /**
      * Encodes the given keys into a composite string that can be used as a key in the internal map for setting values.
@@ -17,7 +20,7 @@ export abstract class MultikeyMap<K, V> extends Map<any, V>
      * @param keys - The tuple of keys to encode.
      * @returns The composite string representation of the keys.
      */
-    abstract encodeSettingComposite(keys: K): string;
+    protected abstract getOrCreateComposite(keys: K): string;
 
     /**
      * Encodes the given keys into a composite string for probing (getting, checking, or deleting) from the map.
@@ -26,18 +29,26 @@ export abstract class MultikeyMap<K, V> extends Map<any, V>
      * @param keys - The tuple of keys to probe.
      * @returns The composite string if encodable, otherwise undefined.
      */
-    abstract encodeProbingComposite(keys: K): string | undefined;
+    protected abstract resolveComposite(keys: K): string | undefined;
 
+    /**
+     * This method is called when a composite key is no longer needed (e.g., after deletion).
+     * Subclasses must implement this to handle any necessary cleanup, such as dereferencing keylets.
+     * @param composite The composite key to free from memory
+     */
+    protected abstract freeComposite(composite: string): void;
+
+    //Instance methods
     set(keys: K, value: V)
     {
-        const composite = this.encodeSettingComposite(keys);
+        const composite = this.getOrCreateComposite(keys);
         super.set(composite, value);
         return this;
     }
 
     get(keys: K): V | undefined
     {
-        const composite = this.encodeProbingComposite(keys);
+        const composite = this.resolveComposite(keys);
         if (!composite)
             return;
         else
@@ -46,7 +57,7 @@ export abstract class MultikeyMap<K, V> extends Map<any, V>
 
     has(keys: K): boolean
     {
-        const composite = this.encodeProbingComposite(keys);
+        const composite = this.resolveComposite(keys);
         if (!composite)
             return false;
         else
@@ -55,7 +66,7 @@ export abstract class MultikeyMap<K, V> extends Map<any, V>
 
     delete(keys: K): boolean
     {
-        const composite = this.encodeProbingComposite(keys);
+        const composite = this.resolveComposite(keys);
         if (!composite)
             return false;
 
@@ -75,32 +86,17 @@ export abstract class MultikeyMap<K, V> extends Map<any, V>
         super.clear();
     }
 
-    //Key management functions
-    protected ensureAndReturnKeylet(key: any)
+    protected getOrCreateKeylet(key: any)
     {
-        const id = MultikeyMap.objectsToKeylets.get(key);
+        const id = MultikeyMap.keysToKeylets.get(key);
         if (id) return id;
 
         const newId = MultikeyMap.idProvider.generateID();
-        MultikeyMap.objectsToKeylets.set(key, newId);
-        MultikeyMap.keyletsToObjects.set(newId, key);
+        MultikeyMap.keysToKeylets.set(key, newId);
+        MultikeyMap.keyletsToKeys.set(newId, key);
         this.bindKeylet(newId);
         return newId;
     }
-
-    //Key composition functions
-
-    protected keyletsToComposite(keylets: string[])
-    {
-        return keylets.join("_");
-    }
-
-    protected compositeToKeylets(composite: string)
-    {
-        return composite.split("_");
-    }
-
-    //Memory management functions
 
     protected bindKeylet(keylet: string)
     {
@@ -108,160 +104,64 @@ export abstract class MultikeyMap<K, V> extends Map<any, V>
         MultikeyMap.keyletCountRegistry.set(keylet, currentCount + 1);
     }
 
-    protected freeKeylet(keylet: string)
+    protected freeKeylets(keylets: string[])
     {
-        const currentCount = MultikeyMap.keyletCountRegistry.get(keylet) ?? 0;
-        if (currentCount <= 1)
+        for (const keylet of keylets)
         {
-            MultikeyMap.keyletCountRegistry.delete(keylet);
-            const keyObj = MultikeyMap.keyletsToObjects.get(keylet);
-            if (keyObj !== undefined)
+            const currentCount = MultikeyMap.keyletCountRegistry.get(keylet) ?? 0;
+            if (currentCount <= 1)
             {
-                MultikeyMap.objectsToKeylets.delete(keyObj);
+                MultikeyMap.keyletCountRegistry.delete(keylet);
+                const keyObj = MultikeyMap.keyletsToKeys.get(keylet);
+                if (keyObj !== undefined)
+                {
+                    MultikeyMap.keysToKeylets.delete(keyObj);
+                }
+                MultikeyMap.keyletsToKeys.delete(keylet);
             }
-            MultikeyMap.keyletsToObjects.delete(keylet);
-        }
-        else
-            MultikeyMap.keyletCountRegistry.set(keylet, currentCount - 1);
-    }
-
-    protected freeComposite(composite: string)
-    {
-        const keylets = this.compositeToKeylets(composite);
-        for (const keylet of keylets)
-            this.freeKeylet(keylet);
-    }
-}
-
-export abstract class ArrayMultikeyMap<K extends Array<any>, V> extends MultikeyMap<K, V>
-{
-    protected mapToOrCreateKeylets(keys: readonly any[]): string[]
-    {
-        const result: string[] = [];
-
-        for (const key of keys)
-            result.push(this.ensureAndReturnKeylet(key));
-
-        return result;
-    }
-
-    protected mapToComposite(keys: readonly any[]): string | undefined
-    {
-        const keylets: string[] = [];
-        for (const key of keys)
-        {
-            const keylet = MultikeyMap.objectsToKeylets.get(key);
-            if (!keylet)
-                return undefined;
             else
-                keylets.push(keylet);
+                MultikeyMap.keyletCountRegistry.set(keylet, currentCount - 1);
         }
-
-        return this.keyletsToComposite(keylets);
-    }
-
-    protected keyletsToKeys(keylets: string[])
-    {
-        const result = [] as unknown as K;
-
-        for (const keylet of keylets)
-            result.push(MultikeyMap.keyletsToObjects.get(keylet)!);
-
-        return result;
     }
 }
 
-export abstract class QueryableArrayMultikeyMap<K extends Array<any>, V> extends ArrayMultikeyMap<K, V>
+export abstract class QueryableMultikeyMap<K, V> extends MultikeyMap<K, V>
 {
     //This holds associations like ... "abc" => "a_dba_abc|abc_ndf_b|bla_abc_foo" ... with keylets separated by _ and composites separated by |
-    keyletToComposites = new Map<string, string>();
+    keyletsToComposites = new Map<string, string>();
 
-    set(keys: K, value: V)
-    {
-        const compositeKey = this.encodeSettingComposite(keys);
-
-        if (!Map.prototype.has.call(this, compositeKey))
-        {
-            for (const key of keys)
-            {
-                const keylet = MultikeyMap.objectsToKeylets.get(key)!;
-
-                const existingKeys = this.keyletToComposites.get(keylet);
-                this.keyletToComposites.set(keylet, existingKeys ? `${existingKeys}|${compositeKey}` : compositeKey);
-            }
-        }
-
-        Map.prototype.set.call(this, compositeKey, value);
-        return this;
-    }
-
-    /**
-     * Returns entries that have any of the given query keys in their key tuple
-     * @param keys An array of keys of which at least one should appear in the tuple of any result key
-     * @example 
-     * ```ts 
-     *  map.set(["A", "B"], 123);
-     *  map.set(["C", "D"], 456);
-     * 
-     *  map.query(["B", "A"]) // yields [{key: ["A", "B"], value: 123}] as "A" and "B" appear both in this result
-     *  map.query(["D", "B"]) // yields [{key: ["A", "B"], value: 123}, {key: ["C", "D"], value: 456}], as "D" appears in key of second object and "B" appears in key of first object.
-     * ```
-     */
-    query(keys: K): MultikeyMapQueryResult<K, V>[]
-    {
-        const { compositesWithKeylets } = this.getAllCompositesContaining(keys);
-
-        return compositesWithKeylets.map(compositeKey => this.generateResultObject(compositeKey));
-    }
+    protected abstract compositeToKeys(composite: string): K;
 
     protected freeComposite(composite: string): void
     {
-        super.freeComposite(composite);
+        const keylets = composite.split(MultikeyMap.keyletSeparator);
 
-        for (const keylet of this.compositeToKeylets(composite))
+        for (const keylet of keylets)
         {
-            const leftOverCompositesWithCurrentKeylet = this.keyletToComposites.get(keylet)!
-                .split("|")
-                .filter(keyletComposite => keyletComposite !== composite);
+            const filteredComposites = this.keyletsToComposites.get(keylet)!.split(MultikeyMap.compositeSeparator).filter(c => c !== composite).join(MultikeyMap.compositeSeparator);
 
-            if (leftOverCompositesWithCurrentKeylet.length === 0)
-                this.keyletToComposites.delete(keylet);
+            if (filteredComposites)
+                this.keyletsToComposites.set(keylet, filteredComposites);
             else
-                this.keyletToComposites.set(keylet, leftOverCompositesWithCurrentKeylet.join("|"));
+                this.keyletsToComposites.delete(keylet);
         }
+
+        this.freeKeylets(keylets);
     }
 
-    protected getAllCompositesContaining(keys: K)
+    protected findCompositesContainingAllOf(keylets: string[])
     {
-        const keylets: string[] = [];
         const intersector = new StringListIntersector();
 
-        for (const key of keys)
-        {
-            const keylet = MultikeyMap.objectsToKeylets.get(key);
-            if (!keylet) continue;
+        for (const keylet of keylets)
+            intersector.addToIntersection(this.keyletsToComposites.get(keylet)!.split(MultikeyMap.compositeSeparator));
 
-            keylets.push(keylet);
-
-            intersector.addToIntersection(this.getCompositesForKeylet(keylet));
-        }
-
-        const compositesWithKeylets = intersector.computeIntersection();
-
-        return { keylets, compositesWithKeylets };
-    }
-
-    protected getCompositesForKeylet(keylet: string)
-    {
-        const keyletContainingKeys = this.keyletToComposites.get(keylet);
-        if (!keyletContainingKeys) return [];
-
-        return keyletContainingKeys.split("|");
+        return intersector.computeIntersection();
     }
 
     protected generateResultObject(compositeKey: string): MultikeyMapQueryResult<K, V>
     {
-        const key = this.keyletsToKeys(compositeKey.split("_"));
+        const key = this.compositeToKeys(compositeKey);
         const value = Map.prototype.get.call(this, compositeKey)!;
 
         return { key, value };
