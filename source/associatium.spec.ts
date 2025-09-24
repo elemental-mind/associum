@@ -2,18 +2,19 @@ import * as assert from 'assert';
 import
 {
     OrderedMultiKeyMap,
-    UnorderedMultikeyMap,
+    UnorderedMultiKeyMap,
     QueryableStructuredMultiKeyMap,
-    MultikeyMapQueryResult,
     StructuredMultiKeyMap,
 } from "./associatium";
+
+import { MultikeyMapQueryResult } from "./queryTypes";
 
 
 export class UnorderedKeymapTests
 {
     shouldSetAndGet()
     {
-        const map = new UnorderedMultikeyMap<string[], number>();
+        const map = new UnorderedMultiKeyMap<string[], number>();
         map.set(["A", "B"], 2);
 
         assert.equal(map.get(["A", "B"]), 2);
@@ -23,7 +24,7 @@ export class UnorderedKeymapTests
 
     shouldHave()
     {
-        const map = new UnorderedMultikeyMap<string[], number>();
+        const map = new UnorderedMultiKeyMap<string[], number>();
         map.set(["X", "Y"], 5);
 
         assert.ok(map.has(["Y", "X"]));
@@ -32,7 +33,7 @@ export class UnorderedKeymapTests
 
     shouldDelete()
     {
-        const map = new UnorderedMultikeyMap<string[], number>();
+        const map = new UnorderedMultiKeyMap<string[], number>();
         map.set(["X", "Y"], 5);
 
         // Test deletion with keys in reverse order
@@ -55,7 +56,7 @@ export class UnorderedKeymapTests
 
     shouldOverrideExistingKey()
     {
-        const map = new UnorderedMultikeyMap<string[], number>();
+        const map = new UnorderedMultiKeyMap<string[], number>();
         map.set(["A", "B"], 1);
 
         assert.equal(map.get(["A", "B"]), 1);
