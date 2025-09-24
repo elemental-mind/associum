@@ -1,8 +1,8 @@
 import { OrderedMultiKeyMap, type MultikeyMapQueryResult } from "../../associatium.ts";
-import { MultikeyMap, QueryableMultikeyMap } from './base';
+import { BaseMultiKeyMap, QueryableMultikeyMap } from './base';
 import { QueryableOrderedMultikeyMap } from './ordered';
 
-export class StructuredMultiKeyMap<K extends Record<string, any>, V> extends MultikeyMap<K, V>
+export class StructuredMultiKeyMap<K extends Record<string, any>, V> extends BaseMultiKeyMap<K, V>
 {
     private fieldCount = 0;
     private fieldMap: Record<string, number> = Object.create(null);
@@ -20,7 +20,7 @@ export class StructuredMultiKeyMap<K extends Record<string, any>, V> extends Mul
         return OrderedMultiKeyMap.prototype.resolveComposite.call(this, resolvedKeysArray);
     }
 
-    protected freeComposite = OrderedMultiKeyMap.prototype.freeComposite;
+    protected deleteComposite = OrderedMultiKeyMap.prototype.deleteComposite;
 
     protected transformKeysToArray(keyObject: K)
     {
@@ -45,7 +45,7 @@ export class StructuredMultiKeyMap<K extends Record<string, any>, V> extends Mul
             if (arrayPosition === undefined)
                 return undefined;
 
-            const keylet = MultikeyMap.keysToKeylets.get(keyObject[field]);
+            const keylet = BaseMultiKeyMap.keysToKeylets.get(keyObject[field]);
             if (keylet === undefined)
                 return undefined;
 
@@ -86,11 +86,11 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
     }
 
     protected resolveComposite = StructuredMultiKeyMap.prototype.resolveComposite;
-    protected freeComposite = QueryableMultikeyMap.prototype.freeComposite;
+    protected deleteComposite = QueryableMultikeyMap.prototype.deleteComposite;
 
     protected compositeToKeys(composite: string): K
     {
-        const keylets = composite.split(MultikeyMap.keyletSeparator);
+        const keylets = composite.split(BaseMultiKeyMap.keyletSeparator);
         const keyObject: Record<string, any> = {};
 
         for (const field in this.fieldMap)
@@ -98,7 +98,7 @@ export class QueryableStructuredMultiKeyMap<K extends Record<string, any>, V> ex
             const arrayPosition = this.fieldMap[field];
             const keylet = keylets[arrayPosition];
             if (keylet !== undefined)
-                keyObject[field] = MultikeyMap.keyletsToKeys.get(keylet);
+                keyObject[field] = BaseMultiKeyMap.keyletsToKeys.get(keylet);
         }
 
         return keyObject as K;

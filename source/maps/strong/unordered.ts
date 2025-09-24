@@ -1,13 +1,13 @@
-import { MultikeyMap, QueryableMultikeyMap } from './base';
+import { BaseMultiKeyMap, QueryableMultikeyMap } from './base';
 
-export class UnorderedMultikeyMap<K extends Array<any>, V> extends MultikeyMap<K, V>
+export class UnorderedMultikeyMap<K extends Array<any>, V> extends BaseMultiKeyMap<K, V>
 {
     protected getOrCreateComposite(keys: K): string
     {
         return keys
             .map(key => this.getOrCreateKeylet(key))
             .sort()
-            .join(MultikeyMap.keyletSeparator);
+            .join(BaseMultiKeyMap.keyletSeparator);
     }
 
     protected resolveComposite(keys: K): string | undefined
@@ -16,17 +16,17 @@ export class UnorderedMultikeyMap<K extends Array<any>, V> extends MultikeyMap<K
 
         for (const key of keys) 
         {
-            const keylet = MultikeyMap.keysToKeylets.get(key);
+            const keylet = BaseMultiKeyMap.keysToKeylets.get(key);
             if (!keylet) return;
             keylets.push(keylet);
         }
 
-        return keylets.sort().join(MultikeyMap.keyletSeparator);
+        return keylets.sort().join(BaseMultiKeyMap.keyletSeparator);
     }
 
-    protected freeComposite(composite: string): void
+    protected deleteComposite(composite: string): void
     {
-        this.freeKeylets(composite.split(MultikeyMap.keyletSeparator));
+        this.freeKeylets(composite.split(BaseMultiKeyMap.keyletSeparator));
     }
 }
 
@@ -38,7 +38,7 @@ export class QueryableUnorderedMultikeyMap<K extends Array<any>, V> extends Quer
             .map(key => this.getOrCreateKeylet(key))
             .sort();
 
-        const composite = keylets.join(MultikeyMap.keyletSeparator);
+        const composite = keylets.join(BaseMultiKeyMap.keyletSeparator);
 
         if (!Map.prototype.has.call(this, composite))
         {
@@ -47,7 +47,7 @@ export class QueryableUnorderedMultikeyMap<K extends Array<any>, V> extends Quer
                 const existing = this.keyletsToComposites.get(keylet);
                 this.keyletsToComposites.set(
                     keylet,
-                    existing ? `${existing}${MultikeyMap.compositeSeparator}${composite}` : composite,
+                    existing ? `${existing}${BaseMultiKeyMap.compositeSeparator}${composite}` : composite,
                 );
             }
         }
@@ -61,18 +61,18 @@ export class QueryableUnorderedMultikeyMap<K extends Array<any>, V> extends Quer
 
         for (const key of keys)
         {
-            const keylet = MultikeyMap.keysToKeylets.get(key);
+            const keylet = BaseMultiKeyMap.keysToKeylets.get(key);
             if (!keylet) return;
             keylets.push(keylet);
         }
 
-        return keylets.sort().join(MultikeyMap.keyletSeparator);
+        return keylets.sort().join(BaseMultiKeyMap.keyletSeparator);
     }
 
     protected compositeToKeys(composite: string): K
     {
         return composite
-            .split(MultikeyMap.keyletSeparator)
-            .map(keylet => MultikeyMap.keyletsToKeys.get(keylet)) as K;
+            .split(BaseMultiKeyMap.keyletSeparator)
+            .map(keylet => BaseMultiKeyMap.keyletsToKeys.get(keylet)) as K;
     }
 }
