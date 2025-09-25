@@ -9,27 +9,27 @@ export interface QueryStrategy
     readonly queryable: boolean;
 }
 
-export interface QueryInterface<K, V>
+export interface QueryInterface<K, TQuery, TKey, V> extends QueryStrategy
 {
-    query(keyTemplate: Partial<K>): MultikeyMapQueryResult<K, V>[];
-    queryIndexedWith(keys: any[]): MultikeyMapQueryResult<K, V>[];
+    query(keyTemplate: TQuery): MultikeyMapQueryResult<K, V>[];
+    queryIndexedWith(keys: TKey[]): MultikeyMapQueryResult<K, V>[];
 }
 
-export function NonQueryable<K, V>(KeyStrategyClass: new () => KeyStrategy<K, V>)
+export function NonQueryable(BaseClass: new () => KeyStrategy<any, any>)
 {
-    return class extends KeyStrategyClass implements QueryStrategy
+    return class NonqueryableMixin extends BaseClass implements QueryStrategy
     {
         queryable = false;
     };
 }
 
-export function Queryable<K, V>(KeyStrategyClass: new () => KeyStrategy<K, V>)
+export function Queryable(BaseClass: new () => KeyStrategy<any, any>)
 {
-    return class extends KeyStrategyClass implements QueryStrategy, QueryInterface<K, V>
+    return class QueryableMixin<K, V> extends BaseClass implements QueryStrategy
     {
         queryable = true;
 
-        protected keyletsToComposites: Map<string, string> = new Map<string, string>();
+        private keyletsToComposites: Map<string, string> = new Map<string, string>();
 
         getOrCreateComposite(keys: any): string
         {
@@ -68,7 +68,7 @@ export function Queryable<K, V>(KeyStrategyClass: new () => KeyStrategy<K, V>)
             super.deleteComposite(composite);
         }
 
-        protected findCompositesContainingAllOf(keylets: string[])
+        findCompositesContainingAllOf(keylets: string[])
         {
             const intersector = new StringListIntersector();
 
@@ -81,7 +81,7 @@ export function Queryable<K, V>(KeyStrategyClass: new () => KeyStrategy<K, V>)
             return intersector.computeIntersection();
         }
 
-        protected generateResultObject(compositeKey: string): MultikeyMapQueryResult<K, V>
+        generateResultObject(compositeKey: string): MultikeyMapQueryResult<K, V>
         {
             const key = (this as any).compositeToKeys(compositeKey) as K;
             const value = super.get(compositeKey) as V;

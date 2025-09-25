@@ -1,9 +1,9 @@
-import { KeyStrategy } from "./keyTypes";
-import { NonQueryable, Queryable, QueryStrategy } from "./queryTypes";
+import type { OrderedKeys, StructuredKeys, UnorderedKeys } from "./keyTypes";
+import { NonQueryable, Queryable } from "./queryTypes";
 
-export function MultikeyMap<K, V>(keysType: new <K, V>() => KeyStrategy<K, V>, queryType: typeof NonQueryable | typeof Queryable)
+export function MultikeyMap(keysType: typeof UnorderedKeys | typeof OrderedKeys | typeof StructuredKeys, queryType: typeof Queryable | typeof NonQueryable)
 {
-    return class MultikeyMap extends (queryType(keysType) as new () => (KeyStrategy<K, V> & QueryStrategy))
+    return class MultikeyMap extends queryType(keysType)
     {
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         set(keys: K, value: V)
@@ -47,8 +47,8 @@ export function MultikeyMap<K, V>(keysType: new <K, V>() => KeyStrategy<K, V>, q
         {
             for (const composite of super.keys())
                 super.deleteComposite(composite);
-            
+
             super.clear();
         }
-    };
+    } as new <K, V>() => Map<K, V>;
 }

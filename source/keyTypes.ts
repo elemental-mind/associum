@@ -1,10 +1,14 @@
-export enum KeyType {
+import { KeyletRegistry } from "./keyletRegistry";
+
+export enum KeyType
+{
     Unordered,
     Ordered,
     Structured,
 }
 
-export interface KeyStrategy<K, V> extends Map<string, V> {
+export interface KeyStrategy<K, V> extends Map<string, V>
+{
     readonly keyType: KeyType;
     getOrCreateComposite(keys: K): string;
     resolveComposite(keys: K): string | undefined;
@@ -13,22 +17,24 @@ export interface KeyStrategy<K, V> extends Map<string, V> {
     deleteComposite(composite: string): void;
 }
 
-import { KeyletRegistry } from "./keyletRegistry";
-
-export class UnorderedKeys<K extends any[], V> extends Map<string, V> implements KeyStrategy<K, V> {
+export class UnorderedKeys<K extends any[], V> extends Map<string, V> implements KeyStrategy<K, V>
+{
     keyType = KeyType.Unordered;
 
-    getOrCreateComposite(keys: K): string {
+    getOrCreateComposite(keys: K): string
+    {
         return keys
             .map(key => KeyletRegistry.getOrCreateKeylet(key))
             .sort()
             .join(KeyletRegistry.keyletSeparator);
     }
 
-    resolveComposite(keys: K): string | undefined {
+    resolveComposite(keys: K): string | undefined
+    {
         const keylets: string[] = [];
 
-        for (const key of keys) {
+        for (const key of keys)
+        {
             if (!key) continue;
             const keylet = KeyletRegistry.keysToKeylets.get(key);
             if (!keylet) return undefined;
@@ -38,31 +44,38 @@ export class UnorderedKeys<K extends any[], V> extends Map<string, V> implements
         return keylets.sort().join(KeyletRegistry.keyletSeparator);
     }
 
-    compositeToKeys(composite: string): K {
+    compositeToKeys(composite: string): K
+    {
         const keylets = composite.split(KeyletRegistry.keyletSeparator);
         return keylets.map(keylet => KeyletRegistry.keyletsToKeys.get(keylet) ?? null).filter(Boolean) as K;
     }
 
-    normalizeQuery(input: Partial<K>): (string | undefined)[] {
+    normalizeQuery(input: Partial<K>): (string | undefined)[]
+    {
         return (input as any[]).map(key => key ? KeyletRegistry.keysToKeylets.get(key) : undefined);
     }
 
-    deleteComposite(composite: string): void {
+    deleteComposite(composite: string): void
+    {
         KeyletRegistry.freeKeylets(composite.split(KeyletRegistry.keyletSeparator));
     }
 }
 
-export class OrderedKeys<K extends any[], V> extends Map<string, V> implements KeyStrategy<K, V> {
+export class OrderedKeys<K extends any[], V> extends Map<string, V> implements KeyStrategy<K, V>
+{
     keyType = KeyType.Ordered;
 
-    getOrCreateComposite(keys: K): string {
+    getOrCreateComposite(keys: K): string
+    {
         return keys.map(key => KeyletRegistry.getOrCreateKeylet(key)).join(KeyletRegistry.keyletSeparator);
     }
 
-    resolveComposite(keys: K): string | undefined {
+    resolveComposite(keys: K): string | undefined
+    {
         const keylets: string[] = [];
 
-        for (const key of keys) {
+        for (const key of keys)
+        {
             if (!key) continue;
             const keylet = KeyletRegistry.keysToKeylets.get(key);
             if (!keylet) return undefined;
@@ -72,45 +85,55 @@ export class OrderedKeys<K extends any[], V> extends Map<string, V> implements K
         return keylets.join(KeyletRegistry.keyletSeparator);
     }
 
-    compositeToKeys(composite: string): K {
+    compositeToKeys(composite: string): K
+    {
         const keylets = composite.split(KeyletRegistry.keyletSeparator);
         return keylets.map(keylet => KeyletRegistry.keyletsToKeys.get(keylet) ?? null).filter(Boolean) as K;
     }
 
-    normalizeQuery(input: Partial<K>): (string | undefined)[] {
+    normalizeQuery(input: Partial<K>): (string | undefined)[]
+    {
         return (input as any[]).map(key => key ? KeyletRegistry.keysToKeylets.get(key) : undefined);
     }
 
-    deleteComposite(composite: string): void {
+    deleteComposite(composite: string): void
+    {
         KeyletRegistry.freeKeylets(composite.split(KeyletRegistry.keyletSeparator));
     }
 }
 
-export class StructuredKeys<K extends Record<string, any>, V> extends Map<string, V> implements KeyStrategy<K, V> {
+export class StructuredKeys<K extends Record<string, any>, V> extends Map<string, V> implements KeyStrategy<K, V>
+{
     keyType = KeyType.Structured;
 
     private fieldCount = 0;
     private fieldMap: Record<string, number> = Object.create(null);
     private reverseFieldMap: string[] = [];
 
-    getOrCreateComposite(keyObject: K): string {
+    getOrCreateComposite(keyObject: K): string
+    {
         return this.transformKeysToArray(keyObject).join(KeyletRegistry.keyletSeparator);
     }
 
-    resolveComposite(keyObject: K): string | undefined {
+    resolveComposite(keyObject: K): string | undefined
+    {
         const keylets = this.resolveKeysToArray(keyObject);
         if (!keylets) return undefined;
         return keylets.join(KeyletRegistry.keyletSeparator);
     }
 
-    compositeToKeys(composite: string): K {
+    compositeToKeys(composite: string): K
+    {
         const keylets = composite.split(KeyletRegistry.keyletSeparator);
         const obj: Record<string, any> = {};
-        for (let i = 0; i < this.fieldCount; i++) {
+        for (let i = 0; i < this.fieldCount; i++)
+        {
             const keylet = keylets[i];
-            if (keylet && keylet !== "") {
+            if (keylet && keylet !== "")
+            {
                 const value = KeyletRegistry.keyletsToKeys.get(keylet);
-                if (value !== undefined) {
+                if (value !== undefined)
+                {
                     const field = this.reverseFieldMap[i];
                     if (field) obj[field] = value;
                 }
@@ -119,18 +142,23 @@ export class StructuredKeys<K extends Record<string, any>, V> extends Map<string
         return obj as K;
     }
 
-    normalizeQuery(input: Partial<K>): (string | undefined)[] {
+    normalizeQuery(input: Partial<K>): (string | undefined)[]
+    {
         const keyletArray: (string | undefined)[] = new Array(this.fieldCount).fill(undefined);
-        for (const field in input) {
+        for (const field in input)
+        {
             let arrayPosition = this.fieldMap[field];
-            if (arrayPosition === undefined) {
+            if (arrayPosition === undefined)
+            {
                 arrayPosition = this.registerNewField(field);
                 this.reverseFieldMap[arrayPosition] = field;
             }
             const keyValue = input[field];
-            if (keyValue !== undefined) {
+            if (keyValue !== undefined)
+            {
                 const keylet = KeyletRegistry.keysToKeylets.get(keyValue);
-                if (keylet !== undefined) {
+                if (keylet !== undefined)
+                {
                     keyletArray[arrayPosition] = keylet;
                 }
             }
@@ -138,15 +166,19 @@ export class StructuredKeys<K extends Record<string, any>, V> extends Map<string
         return keyletArray;
     }
 
-    deleteComposite(composite: string): void {
+    deleteComposite(composite: string): void
+    {
         KeyletRegistry.freeKeylets(composite.split(KeyletRegistry.keyletSeparator).filter(k => k));
     }
 
-    protected transformKeysToArray(keyObject: K): string[] {
+    transformKeysToArray(keyObject: K): string[]
+    {
         const keyletArray: string[] = new Array(this.fieldCount).fill("");
-        for (const field in keyObject) {
+        for (const field in keyObject)
+        {
             let arrayPosition = this.fieldMap[field];
-            if (arrayPosition === undefined) {
+            if (arrayPosition === undefined)
+            {
                 arrayPosition = this.registerNewField(field);
                 this.reverseFieldMap[arrayPosition] = field;
             }
@@ -155,9 +187,11 @@ export class StructuredKeys<K extends Record<string, any>, V> extends Map<string
         return keyletArray;
     }
 
-    protected resolveKeysToArray(keyObject: K): string[] | undefined {
+    resolveKeysToArray(keyObject: K): string[] | undefined
+    {
         const keyletArray: string[] = new Array(this.fieldCount).fill("");
-        for (const field in keyObject) {
+        for (const field in keyObject)
+        {
             const arrayPosition = this.fieldMap[field];
             if (arrayPosition === undefined) return undefined;
             const keylet = KeyletRegistry.keysToKeylets.get(keyObject[field]);
@@ -167,7 +201,8 @@ export class StructuredKeys<K extends Record<string, any>, V> extends Map<string
         return keyletArray;
     }
 
-    private registerNewField(name: string): number {
+    private registerNewField(name: string): number
+    {
         const pos = this.fieldCount++;
         this.fieldMap[name] = pos;
         this.reverseFieldMap[pos] = name;
