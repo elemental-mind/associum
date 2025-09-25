@@ -1,6 +1,6 @@
 import { KeyletRegistry } from "../keyletRegistry.ts";
 import { StringListIntersector } from "../helpers/intersection.ts";
-import { IndexingStrategyMixin } from "./indexing.ts";
+import type { IndexingStrategyMixin } from "./indexing.ts";
 
 export type MultikeyMapQueryResult<K, V> = { key: K; value: V; };
 

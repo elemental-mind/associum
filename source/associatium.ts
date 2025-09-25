@@ -1,6 +1,6 @@
-import { MultikeyMap } from "./multikeyMap";
-import { IndexingStrategy, OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/indexing";
-import { MultikeyMapQueryResult, NonQueryable, OrderedQueryableStrategy, QueryStrategy, Queryable, StructuredQueryableStrategy, UnorderedQueryableStrategy } from "./mixins/queryability";
+import { MultikeyMap } from "./multikeyMap.ts";
+import { type IndexingStrategy, OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/indexing.ts";
+import { type MultikeyMapQueryResult, NonQueryable, type OrderedQueryableStrategy, type QueryStrategy, Queryable, type StructuredQueryableStrategy, type UnorderedQueryableStrategy } from "./mixins/queryability.ts";
 
 export const UnorderedMultiKeyMap = MultikeyMap(UnorderedIndex, NonQueryable) as new <K extends any[], V>() =>
     (Map<K, V> & IndexingStrategy<K, V> & QueryStrategy);
@@ -22,4 +22,4 @@ export const QueryableStructuredMultiKeyMap = MultikeyMap(StructuredIndex, Query
     ? (Map<K, V> & IndexingStrategy<K, V> & StructuredQueryableStrategy<K, E, V>)
     : never;
 
-export { MultikeyMapQueryResult };
+export type { MultikeyMapQueryResult };

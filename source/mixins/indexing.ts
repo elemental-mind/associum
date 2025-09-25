@@ -1,4 +1,4 @@
-import { KeyletRegistry } from "../keyletRegistry";
+import { KeyletRegistry } from "../keyletRegistry.ts";
 
 export enum IndexType
 {

@@ -1,6 +1,6 @@
 import { KeyletRegistry } from "./keyletRegistry.ts";
-import type { UnorderedIndex, OrderedIndex, StructuredIndex } from "./mixins/indexing";
-import type { NonQueryable, Queryable } from "./mixins/queryability";
+import type { UnorderedIndex, OrderedIndex, StructuredIndex } from "./mixins/indexing.ts";
+import type { NonQueryable, Queryable } from "./mixins/queryability.ts";
 
 export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, queryStrategy: typeof Queryable | typeof NonQueryable)
 {
