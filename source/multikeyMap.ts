@@ -1,16 +1,17 @@
-import type { OrderedKeys, StructuredKeys, UnorderedKeys } from "./keyTypes";
-import { NonQueryable, Queryable } from "./queryTypes";
+import { KeyletRegistry } from "./keyletRegistry.ts";
+import type { UnorderedIndex, OrderedIndex, StructuredIndex } from "./mixins/indexing";
+import type { NonQueryable, Queryable } from "./mixins/queryability";
 
-export function MultikeyMap(keysType: typeof UnorderedKeys | typeof OrderedKeys | typeof StructuredKeys, queryType: typeof Queryable | typeof NonQueryable)
+export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, queryStrategy: typeof Queryable | typeof NonQueryable)
 {
-    return class MultikeyMap extends queryType(keysType)
+    return class MultikeyMap<K, V> extends queryStrategy(indexingStrategy(Map))
     {
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         set(keys: K, value: V)
         {
             const composite = super.getOrCreateComposite(keys);
+            if (!super.has(composite)) KeyletRegistry.bindKeylets(composite.split(KeyletRegistry.keyletSeparator));
             super.set(composite, value);
-
             return this;
         }
 
@@ -34,13 +35,26 @@ export function MultikeyMap(keysType: typeof UnorderedKeys | typeof OrderedKeys 
         delete(keys: K): boolean
         {
             const composite = super.resolveComposite(keys);
-            if (!composite) return false;
-
-            if (!super.delete(composite)) return false;
-
-            super.deleteComposite(composite);
+            if (!composite || !super.delete(composite))
+                return false;
+            else
+                super.deleteComposite(composite);
 
             return true;
+        }
+
+        //@ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
+        *keys(): MapIterator<K>
+        {
+            for (const composite of super.keys())
+                yield super.compositeToKeys(composite) as K;
+        }
+
+        //@ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
+        *entries(): MapIterator<K, V>
+        {
+            for (const composite of super.keys())
+                yield [super.compositeToKeys(composite), super.get(composite)];
         }
 
         clear()
@@ -50,5 +64,5 @@ export function MultikeyMap(keysType: typeof UnorderedKeys | typeof OrderedKeys 
 
             super.clear();
         }
-    } as new <K, V>() => Map<K, V>;
+    };
 }

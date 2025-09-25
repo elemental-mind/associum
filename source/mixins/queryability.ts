@@ -1,6 +1,6 @@
-import { KeyletRegistry } from "./keyletRegistry";
-import { StringListIntersector } from "./helpers/intersection";
-import { KeyStrategy } from "./keyTypes.ts";
+import { KeyletRegistry } from "../keyletRegistry.ts";
+import { StringListIntersector } from "../helpers/intersection.ts";
+import { IndexingStrategy } from "./indexing.ts";
 
 export type MultikeyMapQueryResult<K, V> = { key: K; value: V; };
 
@@ -15,17 +15,17 @@ export interface QueryInterface<K, TQuery, TKey, V> extends QueryStrategy
     queryIndexedWith(keys: TKey[]): MultikeyMapQueryResult<K, V>[];
 }
 
-export function NonQueryable(BaseClass: new () => KeyStrategy<any, any>)
+export function NonQueryable(Base: new () => IndexingStrategy<any, any>)
 {
-    return class NonqueryableMixin extends BaseClass implements QueryStrategy
+    return class NonqueryableMixin extends Base implements QueryStrategy
     {
         queryable = false;
     };
 }
 
-export function Queryable(BaseClass: new () => KeyStrategy<any, any>)
+export function Queryable(Base: new () => IndexingStrategy<any, any>)
 {
-    return class QueryableMixin<K, V> extends BaseClass implements QueryStrategy
+    return class QueryableMixin<K, V> extends Base implements QueryStrategy
     {
         queryable = true;
 
@@ -39,7 +39,7 @@ export function Queryable(BaseClass: new () => KeyStrategy<any, any>)
 
             for (const keylet of new Set(composite.split(KeyletRegistry.keyletSeparator)))
             {
-                const existing = this.keyletsToComposites.get(keylet);
+                const existing = this.keyletsToComposites.get(keylet) as string | undefined;
                 this.keyletsToComposites.set(keylet, existing ? existing + KeyletRegistry.compositeSeparator + composite : composite);
             }
 
@@ -89,9 +89,11 @@ export function Queryable(BaseClass: new () => KeyStrategy<any, any>)
             return { key, value };
         }
 
-        query(keyTemplate: Partial<K>): MultikeyMapQueryResult<K, V>[]
+        query(keyTemplate: any): MultikeyMapQueryResult<K, V>[]
         {
-            const keylets = (this as any).normalizeQuery(keyTemplate) as (string | undefined)[];
+            const keylets = this.normalizeQuery(keyTemplate);
+
+            if (!keylets) return [];
 
             const indicesThatNeedToMatch: number[] = [];
 
