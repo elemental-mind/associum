@@ -4,7 +4,7 @@ import type { NonQueryable, Queryable } from "./mixins/queryability";
 
 export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, queryStrategy: typeof Queryable | typeof NonQueryable)
 {
-    return class MultikeyMap<K, V> extends queryStrategy(indexingStrategy(Map))
+    return class MultikeyMap<K, V> extends queryStrategy(indexingStrategy(Map))<K, V>
     {
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         set(keys: K, value: V)

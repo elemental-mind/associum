@@ -1,15 +1,5 @@
 import { KeyletRegistry } from "../keyletRegistry";
 
-export interface IndexingStrategy<K, V> extends Map<string, V>
-{
-    readonly indexType: IndexType;
-    getOrCreateComposite(keys: K): string;
-    resolveComposite(keys: K): string | undefined;
-    compositeToKeys(composite: string): K;
-    normalizeQuery(input: Partial<K>): SparseArray<string> | undefined;
-    deleteComposite(composite: string): void;
-}
-
 export enum IndexType
 {
     Unordered,
@@ -17,11 +7,25 @@ export enum IndexType
     Structured,
 }
 
+export interface IndexingStrategy<K, V> extends Map<string, V>
+{
+    readonly indexType: IndexType;
+}
+
+export interface IndexingStrategyMixin<K, V> extends IndexingStrategy<K, V>
+{
+    getOrCreateComposite(keys: K): string;
+    resolveComposite(keys: K): string | undefined;
+    compositeToKeys(composite: string): K;
+    normalizeQuery(input: Partial<K>): SparseArray<string> | undefined;
+    deleteComposite(composite: string): void;
+}
+
 type SparseArray<T> = Array<T | undefined>;
 
 export function UnorderedIndex(Base: new () => Map<string, any>)
 {
-    return class UnorderedIndex<K extends any[], V> extends Base implements IndexingStrategy<K, V>
+    return class UnorderedIndex<K extends any[], V> extends Base implements IndexingStrategyMixin<K, V>
     {
         indexType = IndexType.Unordered;
 
@@ -68,7 +72,7 @@ export function UnorderedIndex(Base: new () => Map<string, any>)
 
 export function OrderedIndex(Base: new () => Map<string, any>)
 {
-    return class OrderedIndex<K extends any[], V> extends Base implements IndexingStrategy<K, V>
+    return class OrderedIndex<K extends any[], V> extends Base implements IndexingStrategyMixin<K, V>
     {
         indexType = IndexType.Ordered;
 

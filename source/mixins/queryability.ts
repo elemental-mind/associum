@@ -1,6 +1,6 @@
 import { KeyletRegistry } from "../keyletRegistry.ts";
 import { StringListIntersector } from "../helpers/intersection.ts";
-import { IndexingStrategy } from "./indexing.ts";
+import { IndexingStrategyMixin } from "./indexing.ts";
 
 export type MultikeyMapQueryResult<K, V> = { key: K; value: V; };
 
@@ -9,23 +9,32 @@ export interface QueryStrategy
     readonly queryable: boolean;
 }
 
-export interface QueryInterface<K, TQuery, TKey, V> extends QueryStrategy
+export interface UnorderedQueryableStrategy<TKeys, TKey, TValue> extends QueryStrategy
 {
-    query(keyTemplate: TQuery): MultikeyMapQueryResult<K, V>[];
-    queryIndexedWith(keys: TKey[]): MultikeyMapQueryResult<K, V>[];
+    queryIndexedWith(keys: TKey[]): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export function NonQueryable(Base: new () => IndexingStrategy<any, any>)
+export interface OrderedQueryableStrategy<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableStrategy<TKeys, TKey, TValue>
 {
-    return class NonqueryableMixin extends Base implements QueryStrategy
+    query(keyTemplate: (TKey | undefined)[]): MultikeyMapQueryResult<TKeys, TValue>[];
+}
+
+export interface StructuredQueryableStrategy<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableStrategy<TKeys, TKey, TValue>
+{
+    query(keyTemplate: Partial<TKeys>): MultikeyMapQueryResult<TKeys, TValue>[];
+}
+
+export function NonQueryable(Base: new () => IndexingStrategyMixin<any, any>)
+{
+    return class Nonqueryable<K, V> extends Base implements QueryStrategy
     {
         queryable = false;
     };
 }
 
-export function Queryable(Base: new () => IndexingStrategy<any, any>)
+export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
 {
-    return class QueryableMixin<K, V> extends Base implements QueryStrategy
+    return class Queryable<K, V> extends Base implements QueryStrategy
     {
         queryable = true;
 
