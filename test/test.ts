@@ -1,4 +1,4 @@
-import { UnorderedKeymapTests, OrderedKeyMapTests, StructuredKeyMapTests } from "../source/associatium.spec.ts";
+import { UnorderedKeymapTests, OrderedKeyMapTests, StructuredKeyMapTests } from "../source/associum.spec.ts";
 
 function run()
 {

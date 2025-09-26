@@ -1,9 +1,9 @@
 {
-  "name": "associatium",
+  "name": "associum",
   "version": "0.1.0",
   "description": "A TypeScript library for efficient multi-key Maps.",
-  "main": "dist/associatium.js",
-  "types": "dist/associatium.d.ts",
+  "main": "distribution/source/associum.js",
+  "types": "distribution/source/associum.d.ts",
   "type": "module",
   "keywords": [
     "multikey-map",
@@ -15,13 +15,9 @@
   ],
   "author": "Magnus Meseck",
   "license": "MIT",
-  "files": [
-    "dist/",
-    "source/",
-    "README.md"
-  ],
   "scripts": {
-    "test": "node --no-warnings --experimental-transform-types test/test.ts"
+    "build": "rm -r ./distribution || true && tsc",
+    "test": "tsc --noemit && node --no-warnings --experimental-transform-types test/test.ts"
   },
   "dependencies": {
     "identigenium": "^1.0.2"
@@ -31,7 +27,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/elemental-mind/associatium.git"
+    "url": "git+https://github.com/elemental-mind/associum.git"
   },
-  "homepage": "https://github.com/elemental-mind/associatium#readme"
+  "homepage": "https://github.com/elemental-mind/associum#readme"
 }

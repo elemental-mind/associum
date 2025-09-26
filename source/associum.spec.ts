@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { OrderedMultiKeyMap, QueryableStructuredMultiKeyMap, StructuredMultiKeyMap, UnorderedMultiKeyMap, } from "./associatium.ts";
+import { OrderedMultiKeyMap, QueryableStructuredMultiKeyMap, StructuredMultiKeyMap, UnorderedMultiKeyMap, } from "./associum.ts";
 import type { MultikeyMapQueryResult } from "./mixins/queryability.ts";
 
 export class UnorderedKeymapTests
