@@ -21,7 +21,7 @@ function run()
     structured.shouldHave();
     structured.shouldOverrideExistingKey();
 
-    console.log("All tests invoked");
+    console.log("All tests passed");
 }
 
 run();
