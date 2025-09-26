@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Source code
+source/
+
+# Tests
+test/
+distribution/test
+**/*.spec.*
+
+# Config files
+tsconfig.json
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
