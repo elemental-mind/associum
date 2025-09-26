@@ -121,8 +121,8 @@ export function StructuredIndex(Base: new () => Map<string, any>)
     {
         indexType = IndexType.Structured;
 
-        private fieldCount = 0;
-        private fieldMap: Record<string, number> = Object.create(null);
+        fieldCount = 0;
+        fieldMap: Record<string, number> = Object.create(null);
 
         getOrCreateComposite(keyObject: K): string
         {
@@ -182,7 +182,7 @@ export function StructuredIndex(Base: new () => Map<string, any>)
             return keys;
         }
 
-        private registerNewField(name: string): number
+        registerNewField(name: string): number
         {
             const pos = this.fieldCount++;
             this.fieldMap[name] = pos;

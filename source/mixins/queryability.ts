@@ -38,7 +38,7 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
     {
         queryable = true;
 
-        private keyletsToComposites: Map<string, string> = new Map<string, string>();
+        keyletsToComposites: Map<string, string> = new Map<string, string>();
 
         getOrCreateComposite(keys: any): string
         {
