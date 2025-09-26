@@ -17,6 +17,8 @@
   "license": "MIT",
   "scripts": {
     "build": "rm -r ./distribution || true && tsc",
+    "patch": "npm run build && npm version patch && git push --tags && npm publish",
+    "release": "npm run build && npm version minor && git push --tags && npm publish",
     "test": "tsc --noemit && node --no-warnings --experimental-transform-types test/test.ts"
   },
   "dependencies": {
