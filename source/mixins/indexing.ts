@@ -34,7 +34,11 @@ export function UnorderedIndex(Base: new () => KeyletContainerAPI)
 
         getOrCreateComposite(keys: K): string
         {
-            return keys
+            const uniqueKeys = new Set<any>(keys);
+
+            if (uniqueKeys.has(undefined)) throw new Error("Cannot create composite for keys with undefined values in unordered maps");
+
+            return [...uniqueKeys]
                 .map(key => this.getOrCreateKeylet(key))
                 .sort()
                 .join(keyletSeparator);
@@ -42,11 +46,14 @@ export function UnorderedIndex(Base: new () => KeyletContainerAPI)
 
         resolveComposite(keys: K): string | undefined
         {
+            const uniqueKeys = new Set<any>(keys);
+
+            if (uniqueKeys.has(undefined)) throw new Error("Cannot resolve keys with undefined values in unordered maps");
+
             const keylets: string[] = [];
 
-            for (const key of keys)
+            for (const key of uniqueKeys)
             {
-                if (!key) continue;
                 const keylet = this.resolveKeylet(key);
                 if (!keylet) return undefined;
                 keylets.push(keylet);
@@ -63,7 +70,7 @@ export function UnorderedIndex(Base: new () => KeyletContainerAPI)
 
         normalizeStructuralQuery(input: any): SparseArray<string> | undefined
         {
-            throw new Error("Structural querying is not supported on unordered indexes");
+            throw new Error("Structural querying is not supported on unordered maps");
         }
 
         deleteComposite(composite: string): void
@@ -81,18 +88,21 @@ export function OrderedIndex(Base: new () => KeyletContainerAPI)
 
         getOrCreateComposite(keys: K): string
         {
-            return keys
-                .map(key => this.getOrCreateKeylet(key))
-                .join(keyletSeparator);
+            const keylets: string[] = [];
+            for (const key of keys)
+            {
+                if (key === undefined) throw new Error("Cannot use keys containing `undefined` in ordered maps");
+                keylets.push(this.getOrCreateKeylet(key));
+            }
+            return keylets.join(keyletSeparator);
         }
 
         resolveComposite(keys: K): string | undefined
         {
             const keylets: string[] = [];
-
             for (const key of keys)
             {
-                if (!key) continue;
+                if (key === undefined) return undefined;
                 const keylet = this.resolveKeylet(key);
                 if (!keylet) return undefined;
                 keylets.push(keylet);
