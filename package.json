@@ -1,6 +1,6 @@
 {
   "name": "associum",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A TypeScript library for efficient multi-key Maps.",
   "main": "distribution/source/associum.js",
   "types": "distribution/source/associum.d.ts",
