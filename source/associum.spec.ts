@@ -66,6 +66,84 @@ export class UnorderedKeymapTests
         assert.equal(map.get(["A", "B"]), 3);
         assert.equal(map.get(["B", "A"]), 3);
     }
+
+    shouldHandleEmptyStringKeys()
+    {
+        const map = new UnorderedMultiKeyMap<string[], number>();
+        map.set(["", "B"], 4);
+
+        assert.equal(map.get(["", "B"]), 4);
+        assert.equal(map.get(["B", ""]), 4);
+        assert.equal(map.get(["B"]), undefined);
+    }
+
+    shouldHandleZeroKeys()
+    {
+        const map = new UnorderedMultiKeyMap<(string | number)[], string>();
+        map.set([0, "A"], "zero-key");
+
+        assert.equal(map.get([0, "A"]), "zero-key");
+        assert.equal(map.get(["A", 0]), "zero-key");
+        assert.equal(map.get(["A"]), undefined);
+    }
+
+    shouldRejectSparseArrays()
+    {
+        const map = new UnorderedMultiKeyMap<string[], number>();
+        const sparse = [] as string[];
+        sparse[1] = "B";
+        sparse[3] = "D";
+
+        assert.throws(() => map.set(sparse, 9));
+
+        const retreievalSparse = [] as string[];
+        retreievalSparse[1] = "B";
+        retreievalSparse[3] = "D";
+
+        assert.throws(() => map.get(retreievalSparse));
+    }
+
+    shouldIterateKeys()
+    {
+        const map = new UnorderedMultiKeyMap<(string | number)[], number>();
+        map.set(["A", "B"], 1);
+        map.set(["B", "C"], 2);
+        map.set(["", 0], 3);
+
+        assert.deepStrictEqual([...map.keys()], [["A", "B"], ["B", "C"], ["", 0]]);
+    }
+
+    shouldIterateValues()
+    {
+        const emptyMap = new UnorderedMultiKeyMap<string[], number>();
+        assert.deepStrictEqual(Array.from(emptyMap.values()), []);
+
+        const map = new UnorderedMultiKeyMap<(string | number)[], number>();
+        map.set(["A", "B"], 1);
+        map.set(["B", "C"], 2);
+        map.set(["", 0], 3);
+
+        assert.deepStrictEqual([...map.values()], [1, 2, 3]);
+    }
+
+    shouldIterateEntries()
+    {
+        const emptyMap = new UnorderedMultiKeyMap<string[], number>();
+        assert.deepStrictEqual(Array.from(emptyMap.entries()), []);
+
+        const map = new UnorderedMultiKeyMap<(string | number)[], number>();
+        map.set(["A", "B"], 1);
+        map.set(["B", "C"], 2);
+        map.set(["", 0], 3);
+
+        assert.deepStrictEqual(
+            [...map.entries()],
+            [
+                [["A", "B"], 1],
+                [["B", "C"], 2],
+                [["", 0], 3]
+            ]);
+    }
 }
 
 export class OrderedKeyMapTests
@@ -109,6 +187,76 @@ export class OrderedKeyMapTests
         map.set(["A", "B"], 2);
 
         assert.equal(map.get(["A", "B"]), 2);
+    }
+
+    shouldHandleEmptyStringKeys()
+    {
+        const map = new OrderedMultiKeyMap<string[], number>();
+        map.set(["", "B"], 7);
+
+        assert.equal(map.get(["", "B"]), 7);
+        assert.equal(map.get(["B", ""]), undefined);
+    }
+
+    shouldHandleZeroKeys()
+    {
+        const map = new OrderedMultiKeyMap<(string | number)[], string>();
+        map.set([0, "A"], "zero-key");
+
+        assert.equal(map.get([0, "A"]), "zero-key");
+        assert.equal(map.get(["A", 0]), undefined);
+        assert.equal(map.get(["A"]), undefined);
+    }
+
+    shouldRejectSparseArrays()
+    {
+        const map = new OrderedMultiKeyMap<string[], number>();
+        assert.throws(() => map.set(["A", , , "D"], 5));
+    }
+
+    shouldIterateKeys()
+    {
+        const emptyMap = new OrderedMultiKeyMap<string[], number>();
+        assert.deepStrictEqual(Array.from(emptyMap.keys()), []);
+
+        const map = new OrderedMultiKeyMap<(string | number)[], number>();
+        map.set(["A", "B"], 1);
+        map.set(["B", "C"], 2);
+        map.set(["", 0], 3);
+
+        assert.deepStrictEqual([...map.keys()], [["A", "B"], ["B", "C"], ["", 0]]);
+    }
+
+    shouldIterateValues()
+    {
+        const emptyMap = new OrderedMultiKeyMap<string[], number>();
+        assert.deepStrictEqual(Array.from(emptyMap.values()), []);
+
+        const map = new OrderedMultiKeyMap<(string | number)[], number>();
+        map.set(["A", "B"], 1);
+        map.set(["B", "C"], 2);
+        map.set(["", 0], 3);
+
+        assert.deepStrictEqual([...map.values()], [1, 2, 3]);
+    }
+
+    shouldIterateEntries()
+    {
+        const emptyMap = new OrderedMultiKeyMap<string[], number>();
+        assert.deepStrictEqual(Array.from(emptyMap.entries()), []);
+
+        const map = new OrderedMultiKeyMap<(string | number)[], number>();
+        map.set(["A", "B"], 1);
+        map.set(["B", "C"], 2);
+        map.set(["", 0], 3);
+
+        assert.deepStrictEqual(
+            [...map.entries()],
+            [
+                [["A", "B"], 1],
+                [["B", "C"], 2],
+                [["", 0], 3]
+            ]);
     }
 }
 
@@ -179,5 +327,77 @@ export class StructuredKeyMapTests
         map.set({ user: "u1", role: "admin" }, 0);
 
         assert.equal(map.get({ user: "u1", role: "admin" }), 0);
+    }
+
+    shouldHandleEmptyStringsAndZeroValues()
+    {
+        type UserRole = { user: string; role: string; level: number; };
+        const map = new StructuredMultiKeyMap<UserRole, number>();
+
+        map.set({ user: "", role: "", level: 0 }, 7);
+
+        assert.equal(map.get({ user: "", role: "", level: 0 }), 7);
+        assert.equal(map.get({ user: "", role: "", level: 1 }), undefined);
+        assert.equal(map.get({ user: "", role: "guest", level: 0 }), undefined);
+
+        map.set({ user: "u1", role: "admin", level: 0 }, 9);
+
+        assert.equal(map.get({ user: "u1", role: "admin", level: 0 }), 9);
+        assert.equal(map.get({ user: "u1", role: "admin" }), undefined);
+    }
+
+    shouldIterateKeys()
+    {
+        type UserRole = { user: string; role: string; level: number; };
+
+        const emptyMap = new StructuredMultiKeyMap<UserRole, number>();
+        assert.deepStrictEqual(Array.from(emptyMap.keys()), []);
+
+        const map = new StructuredMultiKeyMap<UserRole, number>();
+        map.set({ user: "u1", role: "admin", level: 0 }, 10);
+        map.set({ user: "u2", role: "editor", level: 1 }, 11);
+        map.set({ user: "", role: "guest", level: 0 }, 12);
+
+        const expectedKeys = [
+            { user: "u1", role: "admin", level: 0 },
+            { user: "u2", role: "editor", level: 1 },
+            { user: "", role: "guest", level: 0 },
+        ];
+
+        assert.deepStrictEqual([...map.keys()], expectedKeys);
+    }
+
+    shouldIterateValues()
+    {
+        type UserRole = { user: string; role: string; level: number; };
+
+        const emptyMap = new StructuredMultiKeyMap<UserRole, number>();
+        assert.deepStrictEqual(Array.from(emptyMap.values()), []);
+
+        const map = new StructuredMultiKeyMap<UserRole, number>();
+        map.set({ user: "u1", role: "admin", level: 0 }, 10);
+        map.set({ user: "u2", role: "editor", level: 1 }, 11);
+        map.set({ user: "", role: "guest", level: 0 }, 12);
+
+        assert.deepStrictEqual([...map.values()], [10, 11, 12]);
+    }
+
+    shouldIterateEntries()
+    {
+        type UserRole = { user: string; role: string; level: number; };
+
+        const emptyMap = new StructuredMultiKeyMap<UserRole, number>();
+        assert.deepStrictEqual(Array.from(emptyMap.entries()), []);
+
+        const map = new StructuredMultiKeyMap<UserRole, number>();
+        map.set({ user: "u1", role: "admin", level: 0 }, 10);
+        map.set({ user: "u2", role: "editor", level: 1 }, 11);
+        map.set({ user: "", role: "guest", level: 0 }, 12);
+
+        assert.deepStrictEqual([...map.entries()], [
+            [{ user: "u1", role: "admin", level: 0 }, 10],
+            [{ user: "u2", role: "editor", level: 1 }, 11],
+            [{ user: "", role: "guest", level: 0 }, 12],
+        ]);
     }
 }
