@@ -1,40 +1,39 @@
-import { KeyletRegistry } from "../keyletRegistry.ts";
 import { StringListIntersector } from "../helpers/intersection.ts";
-import type { IndexingStrategyMixin } from "./indexing.ts";
+import { compositeSeparator, keyletSeparator, type IndexingAPI } from "./indexing.ts";
 
 export type MultikeyMapQueryResult<K, V> = { key: K; value: V; };
 
-export interface QueryStrategy
+export interface QueryAPI
 {
     readonly queryable: boolean;
 }
 
-export interface UnorderedQueryableStrategy<TKeys, TKey, TValue> extends QueryStrategy
+export interface UnorderedQueryableAPI<TKeys, TKey, TValue> extends QueryAPI
 {
     queryIndexedWith(keys: TKey[]): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export interface OrderedQueryableStrategy<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableStrategy<TKeys, TKey, TValue>
+export interface OrderedQueryableAPI<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableAPI<TKeys, TKey, TValue>
 {
     query(keyTemplate: (TKey | undefined)[]): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export interface StructuredQueryableStrategy<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableStrategy<TKeys, TKey, TValue>
+export interface StructuredQueryableAPI<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableAPI<TKeys, TKey, TValue>
 {
     query(keyTemplate: Partial<TKeys>): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export function NonQueryable(Base: new () => IndexingStrategyMixin<any, any>)
+export function NonQueryable(Base: new () => IndexingAPI<any>)
 {
-    return class Nonqueryable<K, V> extends Base implements QueryStrategy
+    return class Nonqueryable<K, V> extends Base implements QueryAPI
     {
         queryable = false;
     };
 }
 
-export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
+export function Queryable(Base: new () => IndexingAPI<any>)
 {
-    return class Queryable<K, V> extends Base implements QueryStrategy
+    return class Queryable<K, V> extends Base implements QueryAPI
     {
         queryable = true;
 
@@ -46,10 +45,10 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
 
             if (super.has(composite)) return composite;
 
-            for (const keylet of new Set(composite.split(KeyletRegistry.keyletSeparator)))
+            for (const keylet of new Set(composite.split(keyletSeparator)))
             {
                 const existing = this.keyletsToComposites.get(keylet) as string | undefined;
-                this.keyletsToComposites.set(keylet, existing ? existing + KeyletRegistry.compositeSeparator + composite : composite);
+                this.keyletsToComposites.set(keylet, existing ? existing + compositeSeparator + composite : composite);
             }
 
             return composite;
@@ -57,12 +56,12 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
 
         deleteComposite(composite: string): void
         {
-            for (const keylet of composite.split(KeyletRegistry.keyletSeparator))
+            for (const keylet of composite.split(keyletSeparator))
             {
                 const compositesStr = this.keyletsToComposites.get(keylet);
                 if (compositesStr)
                 {
-                    const filteredComposites = compositesStr.split(KeyletRegistry.compositeSeparator).filter(c => c !== composite).join(KeyletRegistry.compositeSeparator);
+                    const filteredComposites = compositesStr.split(compositeSeparator).filter(c => c !== composite).join(compositeSeparator);
 
                     if (filteredComposites)
                     {
@@ -83,7 +82,7 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
 
             for (const keylet of keylets)
             {
-                const comps = this.keyletsToComposites.get(keylet)?.split(KeyletRegistry.compositeSeparator) || [];
+                const comps = this.keyletsToComposites.get(keylet)?.split(compositeSeparator) || [];
                 intersector.addToIntersection(comps);
             }
 
@@ -100,7 +99,7 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
 
         query(keyTemplate: any): MultikeyMapQueryResult<K, V>[]
         {
-            const keylets = this.normalizeQuery(keyTemplate);
+            const keylets = this.normalizeStructuralQuery(keyTemplate);
 
             if (!keylets) return [];
 
@@ -123,12 +122,12 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
                 const compositesStr = this.keyletsToComposites.get(keylet);
                 if (!compositesStr) continue;
 
-                for (const composite of compositesStr.split(KeyletRegistry.compositeSeparator))
+                for (const composite of compositesStr.split(compositeSeparator))
                 {
                     if (alreadyChecked.has(composite)) continue;
                     alreadyChecked.add(composite);
 
-                    const compositeKeylets = composite.split(KeyletRegistry.keyletSeparator);
+                    const compositeKeylets = composite.split(keyletSeparator);
 
                     if (indicesThatNeedToMatch.every(idx => compositeKeylets[idx] === keylets[idx]))
                     {
@@ -142,11 +141,12 @@ export function Queryable(Base: new () => IndexingStrategyMixin<any, any>)
 
         queryIndexedWith(keys: any[]): MultikeyMapQueryResult<K, V>[]
         {
-            const keylets = keys.map(key => KeyletRegistry.keysToKeylets.get(key));
-
-            if (keylets.some(k => k === undefined))
+            const keylets: string[] = [];
+            for (const key of keys)
             {
-                return [];
+                const k = this.resolveKeylet(key);
+                if (k === undefined) return [];
+                keylets.push(k);
             }
 
             return this
