@@ -1,6 +1,6 @@
 # Associum
 
-Associum provides multi-key maps built on top of `Map` with TypeScript support.
+Associum provides multi-key maps built on top of `Map` with full TypeScript support.
 
 A vanilla map just compares its keys by reference, and does not reason about the structure of the given key. Associum's multi-key-maps solve this problem without falling back to serializing the whole key object, which would be memory-inefficient and make queries hard.
 
@@ -8,22 +8,25 @@ If you ever wanted to associate `["plant", "edible", "leafy"] => "spinach"` or `
 
 ## Main Features
 
-- **Multiple Indexing Options**: Use `unordered arrays`, `ordered arrays` or `records ( a set of string-value-pairs)` as keys to index a value.
-- **Queryability**: Optional queryability to retrieve entries where keys contain certain values or follow a certain structure (increases bundle size).
-- **Drop in Map replacement**: Extends the build-in JS-Map type, but alters how keys are interpreted. 
-- **Memory efficient**: Whereas other solutions use nested maps, this one stores subkeys into a global index shared across all instances resulting in memory use equivalent to a vanilla Map.
-- **Lightweight**:  Tree-shakeable with the unordered variant just shy of 175 bytes minified and bzipped.
-- **Type Safety**: Full TypeScript support
-- **Works everywhere**: Works in the browser, Node.js, Deno, etc.
+- **Multiple Indexing Options**: Support for unordered arrays, ordered arrays, or records (string-value pairs) as composite keys.
+- **Queryability**: Optional mixin enabling partial key queries for flexible lookups (adds ~1KB to bundle size).
+- **Map Compatibility**: Extends the built-in `Map`, preserving standard methods while enhancing key interpretation.
+- **Memory Efficient**: Uses unique keylet IDs for subkeys with per-instance management and reference-counted garbage collection, achieving memory usage comparable to a vanilla `Map`.
+- **Lightweight**: Tree-shakeable; base unordered variant ~200 bytes minified + gzipped (varies with build).
+- **Type Safe**: Comprehensive TypeScript generics for keys and values.
+- **Universal**: Compatible with browsers, Node.js, Deno, and other JS environments.
+- **Instance Isolated**: Self-contained keylet registry per map prevents interference across instances.
+- **Key Safety**: All indexing rejects `undefined` keys to ensure valid composites.
 
 ## Installation & Use
 
-First install:
+Install via npm:
 
 ```bash
 npm install associum
 ```
-Then import and pick respective Map type you want to use. Use like a normal Map:
+
+Import and use like a standard `Map`, selecting the appropriate type:
 
 ```typescript
 import { UnorderedMultiKeyMap } from 'associum';
@@ -32,15 +35,15 @@ const multiKeyMap = new UnorderedMultiKeyMap<string[], any>();
 
 multiKeyMap.set(["a", "c", "b"], 123);
 
-if(multiKeyMap.has(["a", "b", "c"]))
-  console.log(multiKeyMap.get(["b", "a", "c"])) // 123
+if (multiKeyMap.has(["a", "b", "c"]))
+  console.log(multiKeyMap.get(["b", "a", "c"])); // 123
 ```
 
 ## Concepts
 
 ### Keys
 
-Associum supports three types of keys, each with different characteristics:
+Associum supports three key types:
 
 #### Unordered Keys
 Unordered keys are arrays where the order of elements doesn't matter. When you set a value with `["A", "B"]`, you can retrieve it with either `["A", "B"]` or `["B", "A"]`. This is useful when the combination of values is important, but not their sequence.
@@ -70,6 +73,8 @@ map.set({concept: "mobility", subconcept: "car", data: "manufacturers"}, ["Merce
 console.log(map.get({concept: "mobility", subconcept: "car", data: "manufacturers"})); // ["Mercedes", "BMW", "Toyota"]
 ```
 
+**Note**: `undefined` values are not allowed for setting any type of key; attempts to set such keys throw an error.
+
 ### Querying
 
 Associum provides optional queryability that allows you to retrieve entries based on partial key matches. This feature is available through queryable variants of each map type.
@@ -83,13 +88,15 @@ map.set(["plant", "edible", "leafy"], 1);
 map.set(["plant", "edible", "root"], 2);
 map.set(["animal", "mammal", "domestic"], 3);
 
-// Find all entries containing "plant" and "edible"
+// Find entries with "plant" and "edible"
 const results = map.queryIndexedWith(["plant", "edible"]);
-// Returns entries for both ["plant", "edible", "leafy"] and ["plant", "edible", "root"]
+// [{ key: ["plant", "edible", "leafy"], value: 1 }, { key: ["plant", "edible", "root"], value: 2 }]
 ```
 
-#### Querying Ordered Keys
-With queryable ordered maps, you can find entries that match specific values at specific positions, using `undefined` for positions you don't care about.
+**Note**: Unordered maps do not support positional `query`; use `queryIndexedWith` for subset matches.
+
+#### Ordered Querying
+Match specific positions with wildcards (`undefined`). Use `query`.
 
 ```typescript
 const map = new QueryableOrderedMultiKeyMap<string[], number>();
@@ -97,10 +104,12 @@ map.set(["concept", "mobility", "car"], 1);
 map.set(["concept", "housing", "apartment"], 2);
 map.set(["concept", "mobility", "bike"], 3);
 
-// Find all entries with "concept" at position 0 and "mobility" at position 1
+// Match position 0="concept", 1="mobility"
 const results = map.query(["concept", "mobility", undefined]);
-// Returns entries for both ["concept", "mobility", "car"] and ["concept", "mobility", "bike"]
+// [{ key: ["concept", "mobility", "car"], value: 1 }, { key: ["concept", "mobility", "bike"], value: 3 }]
 ```
+
+Supports prefix/suffix matching via wildcards.
 
 #### Querying Structured Keys
 With queryable structured maps, you can find entries that match specific property values, omitting properties you don't care about.
@@ -113,10 +122,11 @@ map.set({user: "u2", role: "admin", department: "IT"}, 3);
 
 // Find all entries where user is "u1"
 const results = map.query({user: "u1"});
-// Returns entries for both u1's admin and editor roles
+// [{ key: {user: "u1", role: "admin", department: "IT"}, value: 1 }, { key: {user: "u1", role: "editor", department: "Marketing"}, value: 2 }]
 ```
 
-Querying increases the bundle size but provides powerful lookup capabilities for complex data relationships.
+Field order is fixed per instance based on first usage.
+
 ## Examples
 
 ### Basic Usage
@@ -179,7 +189,7 @@ userMap.set({user: "u2", role: "admin", department: "IT"}, 3);
 
 // Get values
 console.log(userMap.get({user: "u1", role: "admin", department: "IT"})); // 1
-console.log(userMap.get({user: "u1", role: "admin"})); // undefined (incomplete key)
+console.log(userMap.get({user: "u1", role: "admin"})); // undefined (requires full key)
 
 // Check existence
 console.log(userMap.has({user: "u2", role: "admin", department: "IT"})); // true
@@ -193,19 +203,19 @@ import { QueryableUnorderedMultiKeyMap } from 'associum';
 
 const tagMap = new QueryableUnorderedMultiKeyMap<string[], string>();
 
-// Set values
-tagMap.set(["frontend", "javascript", "framework"], "React");
-tagMap.set(["frontend", "javascript", "framework"], "Vue");
-tagMap.set(["frontend", "typescript", "framework"], "Angular");
-tagMap.set(["backend", "javascript", "runtime"], "Node.js");
-tagMap.set(["backend", "python", "framework"], "Django");
+tagMap.set(["frontend", "react", "javascript"], "React");
+tagMap.set(["frontend", "vue", "javascript"], "Vue");
+tagMap.set(["frontend", "angular", "typescript"], "Angular");
+tagMap.set(["backend", "node", "javascript"], "Node.js");
+tagMap.set(["backend", "django", "python"], "Django");
 
-// Query for entries containing specific tags
-const jsFrameworks = tagMap.queryIndexedWith(["javascript", "framework"]);
-// Returns entries for React, Vue
+// Query for frontend JavaScript frameworks
+const jsFrameworks = tagMap.queryIndexedWith(["frontend", "javascript"]);
+// [{ key: ["frontend", "react", "javascript"], value: "React" }, { key: ["frontend", "vue", "javascript"], value: "Vue" }]
 
+// All frontend tech
 const frontendTech = tagMap.queryIndexedWith(["frontend"]);
-// Returns entries for React, Vue, Angular
+// Includes React, Vue, Angular
 ```
 
 #### QueryableOrderedMultiKeyMap
@@ -214,21 +224,22 @@ import { QueryableOrderedMultiKeyMap } from 'associum';
 
 const pathMap = new QueryableOrderedMultiKeyMap<string[], string>();
 
-// Set values
 pathMap.set(["api", "v1", "users", "GET"], "Get all users");
 pathMap.set(["api", "v1", "users", "POST"], "Create user");
 pathMap.set(["api", "v1", "users", ":id", "GET"], "Get user by ID");
 pathMap.set(["api", "v1", "posts", "GET"], "Get all posts");
 pathMap.set(["api", "v1", "posts", "POST"], "Create post");
 
-// Query for all user endpoints
+// All user endpoints (prefix match)
 const userEndpoints = pathMap.query(["api", "v1", "users"]);
-// Returns entries for GET users, POST users, GET users/:id
+// [{ key: ["api", "v1", "users", "GET"], value: "Get all users" }, ... , { key: ["api", "v1", "users", ":id", "GET"], value: "Get user by ID" }]
 
-// Query for all GET endpoints
-const getEndpoints = pathMap.query(["api", "v1", undefined, undefined, "GET"]);
-// Returns entries for GET users, GET users/:id, GET posts
+// All GET endpoints under v1 (positions 0,1,3)
+const getEndpoints = pathMap.query(["api", "v1", undefined, "GET"]);
+// Matches ["api", "v1", "users", "GET"], ["api", "v1", "posts", "GET"] (note: :id example requires adjustment for length)
 ```
+
+**Note**: For variable-length keys, wildcards work on specified positions; shorter keys may not match trailing wildcards.
 
 #### QueryableStructuredMultiKeyMap
 ```typescript
@@ -359,6 +370,15 @@ Returns a new iterator object that contains [key, value] pairs for each element 
 ```typescript
 for (const [key, value] of map.entries()) {
     console.log(key, value);
+}
+```
+
+#### values(): MapIterator<V>
+Returns a new iterator object that contains the values for each element in the map.
+
+```typescript
+for (const value of map.values()) {
+    console.log(value);
 }
 ```
 
