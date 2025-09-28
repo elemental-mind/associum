@@ -1,17 +1,20 @@
-import { KeyletRegistry } from "./keyletRegistry.ts";
-import type { UnorderedIndex, OrderedIndex, StructuredIndex } from "./mixins/indexing.ts";
+import { type UnorderedIndex, type OrderedIndex, type StructuredIndex, keyletSeparator } from "./mixins/indexing.ts";
+import { compositePrefix, KeyletContaining } from "./mixins/keyletContaining.ts";
 import type { NonQueryable, Queryable } from "./mixins/queryability.ts";
 
-export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, queryStrategy: typeof Queryable | typeof NonQueryable)
+export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, QueryStrategy: typeof Queryable | typeof NonQueryable)
 {
-    return class MultikeyMap<K, V> extends queryStrategy(indexingStrategy(Map))<K, V>
+    return class MultikeyMap<K, V> extends QueryStrategy(IndexingStrategy(KeyletContaining(Map)))<K, V>
     {
+        mappingsCount = 0;
+
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         set(keys: K, value: V)
         {
             const composite = super.getOrCreateComposite(keys);
-            if (!super.has(composite)) KeyletRegistry.bindKeylets(composite.split(KeyletRegistry.keyletSeparator));
-            super.set(composite, value);
+            const registryEntry = compositePrefix + composite;
+            if (!super.has(registryEntry)) this.bindKeylets(composite.split(keyletSeparator));
+            super.set(registryEntry, value);
             return this;
         }
 
@@ -20,7 +23,7 @@ export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof Ord
         {
             const composite = super.resolveComposite(keys);
             if (!composite) return undefined;
-            return super.get(composite);
+            return super.get(compositePrefix + composite);
         }
 
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
@@ -28,14 +31,14 @@ export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof Ord
         {
             const composite = super.resolveComposite(keys);
             if (!composite) return false;
-            return super.has(composite);
+            return super.has(compositePrefix + composite);
         }
 
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         delete(keys: K): boolean
         {
             const composite = super.resolveComposite(keys);
-            if (!composite || !super.delete(composite))
+            if (!composite || !super.delete(compositePrefix + composite))
                 return false;
             else
                 super.deleteComposite(composite);
@@ -46,23 +49,30 @@ export function MultikeyMap(indexingStrategy: typeof UnorderedIndex | typeof Ord
         //@ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         *keys(): MapIterator<K>
         {
-            for (const composite of super.keys())
-                yield super.compositeToKeys(composite) as K;
+            for (const key of super.keys())
+                if (typeof key === "string" && key.startsWith(compositePrefix))
+                    yield super.compositeToKeys(key.substring(1)) as K;
         }
 
         //@ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         *entries(): MapIterator<K, V>
         {
-            for (const composite of super.keys())
-                yield [super.compositeToKeys(composite), super.get(composite)];
+            for (const key of super.keys())
+                if (typeof key === "string" && key.startsWith(compositePrefix))
+                    yield [super.compositeToKeys(key.substring(1)), super.get(key)];
+        }
+
+        *values(): MapIterator<V>
+        {
+            for (const key of super.keys())
+                if (typeof key === "string" && key.startsWith(compositePrefix))
+                    yield super.get(key) as V;
         }
 
         clear()
         {
-            for (const composite of super.keys())
-                super.deleteComposite(composite);
-
             super.clear();
+            this.mappingsCount = 0;
         }
     };
 }
