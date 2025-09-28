@@ -1,47 +1,47 @@
-import { StringListIntersector } from "../helpers/intersection.ts";
-import { compositeSeparator, keyletSeparator, type IndexingAPI } from "./indexing.ts";
+import { StringListIntersector } from "../../helpers/intersection.ts";
+import { compositeSeparator, keyletSeparator, type KeyIndexingAPI } from "./indexing.ts";
 
 export type MultikeyMapQueryResult<K, V> = { key: K; value: V; };
 
-export interface QueryAPI
+export interface QueryAbleKeysAPI
 {
     readonly queryable: boolean;
 }
 
-export interface UnorderedQueryableAPI<TKeys, TKey, TValue> extends QueryAPI
+export interface UnorderedQueryableKeysAPI<TKeys, TKey, TValue> extends QueryAbleKeysAPI
 {
-    queryIndexedWith(keys: TKey[]): MultikeyMapQueryResult<TKeys, TValue>[];
+    queryKeysIndexedWith(keys: TKey[]): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export interface OrderedQueryableAPI<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableAPI<TKeys, TKey, TValue>
+export interface OrderedQueryableKeysAPI<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
-    query(keyTemplate: (TKey | undefined)[]): MultikeyMapQueryResult<TKeys, TValue>[];
+    queryKeysMatching(keyTemplate: (TKey | undefined)[]): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export interface StructuredQueryableAPI<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableAPI<TKeys, TKey, TValue>
+export interface StructuredQueryableKeysAPI<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
-    query(keyTemplate: Partial<TKeys>): MultikeyMapQueryResult<TKeys, TValue>[];
+    queryKeysMatching(keyTemplate: Partial<TKeys>): MultikeyMapQueryResult<TKeys, TValue>[];
 }
 
-export function NonQueryable(Base: new () => IndexingAPI<any>)
+export function NonQueryableKeys(Base: new () => KeyIndexingAPI<any>)
 {
-    return class Nonqueryable<K, V> extends Base implements QueryAPI
+    return class NonqueryableKeys<K, V> extends Base implements QueryAbleKeysAPI
     {
         queryable = false;
     };
 }
 
-export function Queryable(Base: new () => IndexingAPI<any>)
+export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
 {
-    return class Queryable<K, V> extends Base implements QueryAPI
+    return class QueryableKeys<K, V> extends Base implements QueryAbleKeysAPI
     {
         queryable = true;
 
         keyletsToComposites: Map<string, string> = new Map<string, string>();
 
-        getOrCreateComposite(keys: any): string
+        getOrCreateKeyComposite(keys: any): string
         {
-            const composite = super.getOrCreateComposite(keys);
+            const composite = super.getOrCreateKeyComposite(keys);
 
             if (super.has(composite)) return composite;
 
@@ -54,7 +54,7 @@ export function Queryable(Base: new () => IndexingAPI<any>)
             return composite;
         }
 
-        deleteComposite(composite: string): void
+        deleteKeyComposite(composite: string): void
         {
             for (const keylet of composite.split(keyletSeparator))
             {
@@ -73,7 +73,7 @@ export function Queryable(Base: new () => IndexingAPI<any>)
                 }
             }
 
-            super.deleteComposite(composite);
+            super.deleteKeyComposite(composite);
         }
 
         findCompositesContainingAllOf(keylets: string[])
@@ -99,7 +99,7 @@ export function Queryable(Base: new () => IndexingAPI<any>)
 
         query(keyTemplate: any): MultikeyMapQueryResult<K, V>[]
         {
-            const keylets = this.normalizeStructuralQuery(keyTemplate);
+            const keylets = this.normalizeStructuralKeyQuery(keyTemplate);
 
             if (!keylets) return [];
 

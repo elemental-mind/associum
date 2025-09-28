@@ -1,38 +1,38 @@
-import type { KeyletContainerAPI } from "./keyletContaining.ts";
+import type { KeyletContainerAPI } from "../keyletContaining.ts";
 
 export const keyletSeparator = "_";
 export const compositeSeparator = "|";
 
-export enum IndexType
+export enum KeyIndexType
 {
     Unordered,
     Ordered,
     Structured,
 }
 
-export interface IndexingBaseAPI extends KeyletContainerAPI
+export interface KeyIndexingBaseAPI extends KeyletContainerAPI
 {
-    readonly indexType: IndexType;
+    readonly keyIndexType: KeyIndexType;
 }
 
-export interface IndexingAPI<K> extends IndexingBaseAPI
+export interface KeyIndexingAPI<K> extends KeyIndexingBaseAPI
 {
-    getOrCreateComposite(keys: K): string;
-    resolveComposite(keys: K): string | undefined;
-    compositeToKeys(composite: string): K;
-    normalizeStructuralQuery(input: any): SparseArray<string> | undefined;
-    deleteComposite(composite: string): void;
+    getOrCreateKeyComposite(keys: K): string;
+    resolveKeyComposite(keys: K): string | undefined;
+    keyCompositeToKeys(composite: string): K;
+    normalizeStructuralKeyQuery(input: any): SparseArray<string> | undefined;
+    deleteKeyComposite(composite: string): void;
 }
 
 type SparseArray<T> = Array<T | undefined>;
 
 export function UnorderedIndex(Base: new () => KeyletContainerAPI)
 {
-    return class UnorderedIndex<K extends any[], V> extends Base implements IndexingAPI<K>
+    return class UnorderedIndex<K extends any[], V> extends Base implements KeyIndexingAPI<K>
     {
-        indexType = IndexType.Unordered;
+        keyIndexType = KeyIndexType.Unordered;
 
-        getOrCreateComposite(keys: K): string
+        getOrCreateKeyComposite(keys: K): string
         {
             const uniqueKeys = new Set<any>(keys);
 
@@ -44,7 +44,7 @@ export function UnorderedIndex(Base: new () => KeyletContainerAPI)
                 .join(keyletSeparator);
         }
 
-        resolveComposite(keys: K): string | undefined
+        resolveKeyComposite(keys: K): string | undefined
         {
             const uniqueKeys = new Set<any>(keys);
 
@@ -62,18 +62,18 @@ export function UnorderedIndex(Base: new () => KeyletContainerAPI)
             return keylets.sort().join(keyletSeparator);
         }
 
-        compositeToKeys(composite: string): K
+        keyCompositeToKeys(composite: string): K
         {
             const keylets = composite.split(keyletSeparator);
             return keylets.map(keylet => super.get(keylet)!) as K;
         }
 
-        normalizeStructuralQuery(input: any): SparseArray<string> | undefined
+        normalizeStructuralKeyQuery(input: any): SparseArray<string> | undefined
         {
             throw new Error("Structural querying is not supported on unordered maps");
         }
 
-        deleteComposite(composite: string): void
+        deleteKeyComposite(composite: string): void
         {
             this.freeKeylets(composite.split(keyletSeparator));
         }
@@ -82,11 +82,11 @@ export function UnorderedIndex(Base: new () => KeyletContainerAPI)
 
 export function OrderedIndex(Base: new () => KeyletContainerAPI)
 {
-    return class OrderedIndex<K extends any[], V> extends Base implements IndexingAPI<K>
+    return class OrderedIndex<K extends any[], V> extends Base implements KeyIndexingAPI<K>
     {
-        indexType = IndexType.Ordered;
+        keyIndexType = KeyIndexType.Ordered;
 
-        getOrCreateComposite(keys: K): string
+        getOrCreateKeyComposite(keys: K): string
         {
             const keylets: string[] = [];
             for (const key of keys)
@@ -97,7 +97,7 @@ export function OrderedIndex(Base: new () => KeyletContainerAPI)
             return keylets.join(keyletSeparator);
         }
 
-        resolveComposite(keys: K): string | undefined
+        resolveKeyComposite(keys: K): string | undefined
         {
             const keylets: string[] = [];
             for (const key of keys)
@@ -111,18 +111,18 @@ export function OrderedIndex(Base: new () => KeyletContainerAPI)
             return keylets.join(keyletSeparator);
         }
 
-        compositeToKeys(composite: string): K
+        keyCompositeToKeys(composite: string): K
         {
             const keylets = composite.split(keyletSeparator);
             return keylets.map(keylet => super.get(keylet)!) as K;
         }
 
-        normalizeStructuralQuery(input: any): SparseArray<string> | undefined
+        normalizeStructuralKeyQuery(input: any): SparseArray<string> | undefined
         {
             return (input as any[]).map(key => this.resolveKeylet(key));
         }
 
-        deleteComposite(composite: string): void
+        deleteKeyComposite(composite: string): void
         {
             this.freeKeylets(composite.split(keyletSeparator));
         }
@@ -134,25 +134,25 @@ export function StructuredIndex(Base: new () => KeyletContainerAPI)
     //@ts-ignore
     return class StructuredIndex<K extends Record<string, any>, V> extends OrderedIndex(Base)<Record<string, any>, any>
     {
-        indexType = IndexType.Structured;
+        keyIndexType = KeyIndexType.Structured;
 
         fieldCount = 0;
         fieldMap: Record<string, number> = Object.create(null);
 
-        getOrCreateComposite(keyObject: K): string
+        getOrCreateKeyComposite(keyObject: K): string
         {
-            return super.getOrCreateComposite(this.transformKeysToArray(keyObject));
+            return super.getOrCreateKeyComposite(this.transformKeysToArray(keyObject));
         }
 
-        resolveComposite(keyObject: K): string | undefined
+        resolveKeyComposite(keyObject: K): string | undefined
         {
             const array = this.resolveKeysToArray(keyObject);
-            return array ? super.resolveComposite(array) : undefined;
+            return array ? super.resolveKeyComposite(array) : undefined;
         }
 
-        compositeToKeys(composite: string): K
+        keyCompositeToKeys(composite: string): K
         {
-            const keys = super.compositeToKeys(composite) as any[];
+            const keys = super.keyCompositeToKeys(composite) as any[];
             const obj: Record<string, any> = {};
 
             for (const field in this.fieldMap)
@@ -166,10 +166,10 @@ export function StructuredIndex(Base: new () => KeyletContainerAPI)
             return obj as K;
         }
 
-        normalizeStructuralQuery(input: any): SparseArray<string> | undefined
+        normalizeStructuralKeyQuery(input: any): SparseArray<string> | undefined
         {
             const keyArray = this.resolveKeysToArray(input as Partial<K>);
-            return keyArray ? super.normalizeStructuralQuery(keyArray) : undefined;
+            return keyArray ? super.normalizeStructuralKeyQuery(keyArray) : undefined;
         }
 
         transformKeysToArray(keyObject: Partial<K>): any[]
