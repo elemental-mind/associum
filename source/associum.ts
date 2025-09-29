@@ -1,6 +1,6 @@
-import { MultikeyMap } from "./multikeyMap.ts";
+import { MultikeyMap, type MapQueryResult } from "./multikeyMap.ts";
 import { type KeyIndexingBaseAPI, OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/keys/indexing.ts";
-import { type MultikeyMapQueryResult, NonQueryableKeys, type OrderedQueryableKeysAPI, type QueryAbleKeysAPI, QueryableKeys, type StructuredQueryableKeysAPI, type UnorderedQueryableKeysAPI } from "./mixins/keys/queryability.ts";
+import { NonQueryableKeys, type OrderedQueryableKeysAPI, type QueryAbleKeysAPI, QueryableKeys, type StructuredQueryableKeysAPI, type UnorderedQueryableKeysAPI } from "./mixins/keys/queryability.ts";
 
 export const UnorderedMultiKeyMap = MultikeyMap(UnorderedIndex, NonQueryableKeys) as new <K extends any[], V>() =>
     (Map<K, V> & KeyIndexingBaseAPI & QueryAbleKeysAPI);
@@ -22,4 +22,4 @@ export const QueryableStructuredMultiKeyMap = MultikeyMap(StructuredIndex, Query
     ? (Map<K, V> & KeyIndexingBaseAPI & StructuredQueryableKeysAPI<K, E, V>)
     : never;
 
-export type { MultikeyMapQueryResult };
+export type { MapQueryResult as MultikeyMapQueryResult };

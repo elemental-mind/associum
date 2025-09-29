@@ -1,7 +1,5 @@
+import { keyletSeparator } from "../../constants.ts";
 import type { KeyletContainerAPI } from "../keyletContaining.ts";
-
-export const keyletSeparator = "_";
-export const compositeSeparator = "|";
 
 export enum KeyIndexType
 {

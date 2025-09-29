@@ -1,7 +1,7 @@
+import type { MapQueryResult } from "../../multikeyMap.ts";
 import { StringListIntersector } from "../../helpers/intersection.ts";
-import { compositeSeparator, keyletSeparator, type KeyIndexingAPI } from "./indexing.ts";
-
-export type MultikeyMapQueryResult<K, V> = { key: K; value: V; };
+import { type KeyIndexingAPI } from "./indexing.ts";
+import type { keyletSeparator } from "../../constants.ts";
 
 export interface QueryAbleKeysAPI
 {
@@ -10,17 +10,17 @@ export interface QueryAbleKeysAPI
 
 export interface UnorderedQueryableKeysAPI<TKeys, TKey, TValue> extends QueryAbleKeysAPI
 {
-    queryKeysIndexedWith(keys: TKey[]): MultikeyMapQueryResult<TKeys, TValue>[];
+    queryKeysIndexedWith(keys: TKey[]): MapQueryResult<TKeys, TValue>[];
 }
 
 export interface OrderedQueryableKeysAPI<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
-    queryKeysMatching(keyTemplate: (TKey | undefined)[]): MultikeyMapQueryResult<TKeys, TValue>[];
+    queryKeysMatching(keyTemplate: (TKey | undefined)[]): MapQueryResult<TKeys, TValue>[];
 }
 
 export interface StructuredQueryableKeysAPI<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
-    queryKeysMatching(keyTemplate: Partial<TKeys>): MultikeyMapQueryResult<TKeys, TValue>[];
+    queryKeysMatching(keyTemplate: Partial<TKeys>): MapQueryResult<TKeys, TValue>[];
 }
 
 export function NonQueryableKeys(Base: new () => KeyIndexingAPI<any>)
@@ -89,7 +89,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             return intersector.computeIntersection();
         }
 
-        generateResultObject(compositeKey: string): MultikeyMapQueryResult<K, V>
+        generateResultObject(compositeKey: string): MapQueryResult<K, V>
         {
             const key = (this as any).compositeToKeys(compositeKey) as K;
             const value = super.get(compositeKey) as V;
@@ -97,7 +97,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             return { key, value };
         }
 
-        query(keyTemplate: any): MultikeyMapQueryResult<K, V>[]
+        query(keyTemplate: any): MapQueryResult<K, V>[]
         {
             const keylets = this.normalizeStructuralKeyQuery(keyTemplate);
 
@@ -114,7 +114,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             }
 
             const alreadyChecked = new Set<string>();
-            const results: MultikeyMapQueryResult<K, V>[] = [];
+            const results: MapQueryResult<K, V>[] = [];
 
             for (const index of indicesThatNeedToMatch)
             {
@@ -139,7 +139,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             return results;
         }
 
-        queryIndexedWith(keys: any[]): MultikeyMapQueryResult<K, V>[]
+        queryIndexedWith(keys: any[]): MapQueryResult<K, V>[]
         {
             const keylets: string[] = [];
             for (const key of keys)

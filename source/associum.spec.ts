@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { OrderedMultiKeyMap, QueryableStructuredMultiKeyMap, StructuredMultiKeyMap, UnorderedMultiKeyMap, } from "./associum.ts";
-import type { MultikeyMapQueryResult } from "./mixins/keys/queryability.ts";
+import type { MapQueryResult } from './multikeyMap.ts';
 
 export class UnorderedKeymapTests
 {
@@ -283,7 +283,7 @@ export class StructuredKeyMapTests
         map.set({ user: "u2", role: "admin" }, 1);
 
         const results = map.queryKeysMatching({ user: "u1" });
-        const roles = results.map((result: MultikeyMapQueryResult<UserRole, number>) => result.key.role).sort();
+        const roles = results.map((result: MapQueryResult<UserRole, number>) => result.key.role).sort();
 
         assert.equal(roles.length, 2);
         assert.equal(roles.join(","), "admin,editor");

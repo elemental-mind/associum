@@ -1,9 +1,6 @@
 import { IDProvider } from "identigenium";
 import { AlphaNumeric } from "identigenium/sets";
-
-export const compositePrefix = "$";                    //ASCII 36
-export const keyletUseCountPrefix = "#";               //ASCII 35
-export const nonCompositeStringEscapePrefix = "%";     //ASCII 37
+import { keyletUseCountPrefix, stringEscapePrefix } from "../constants.ts";
 
 export type KeyletContainerAPI = InstanceType<ReturnType<typeof KeyletContaining>>;
 
@@ -21,13 +18,13 @@ export function KeyletContaining<TBase extends new (...args: any[]) => Map<any, 
 
         resolveKeylet(key: any): string | undefined
         {
-            const normalizedKeyletAccessor = typeof key === "string" ? nonCompositeStringEscapePrefix + key : key;
+            const normalizedKeyletAccessor = typeof key === "string" ? stringEscapePrefix + key : key;
             return super.get(normalizedKeyletAccessor);
         }
 
         getOrCreateKeylet(key: any)
         {
-            const normalizedKeyletAccessor = typeof key === "string" ? nonCompositeStringEscapePrefix + key : key;
+            const normalizedKeyletAccessor = typeof key === "string" ? stringEscapePrefix + key : key;
 
             const currentKeylet = super.get(normalizedKeyletAccessor);
             if (currentKeylet) return currentKeylet;
@@ -63,7 +60,7 @@ export function KeyletContaining<TBase extends new (...args: any[]) => Map<any, 
                 else
                 {
                     const key = super.get(keylet)!;
-                    super.delete(typeof key === "string" ? nonCompositeStringEscapePrefix + key : key);
+                    super.delete(typeof key === "string" ? stringEscapePrefix + key : key);
                     super.delete(keylet);
                     super.delete(keyletCountAccessor);
                 }

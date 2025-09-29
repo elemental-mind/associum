@@ -1,6 +1,7 @@
-import { type UnorderedIndex, type OrderedIndex, type StructuredIndex, keyletSeparator } from "./mixins/keys/indexing.ts";
-import { compositePrefix, KeyletContaining } from "./mixins/keyletContaining.ts";
+import { type UnorderedIndex, type OrderedIndex, type StructuredIndex } from "./mixins/keys/indexing.ts";
+import { KeyletContaining } from "./mixins/keyletContaining.ts";
 import type { NonQueryableKeys, QueryableKeys } from "./mixins/keys/queryability.ts";
+import { keyletSeparator, keyValuePrefix } from "./constants.ts";
 
 export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, QueryStrategy: typeof QueryableKeys | typeof NonQueryableKeys)
 {
@@ -12,7 +13,7 @@ export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof Ord
         set(keys: K, value: V)
         {
             const composite = super.getOrCreateKeyComposite(keys);
-            const registryEntry = compositePrefix + composite;
+            const registryEntry = keyValuePrefix + composite;
             if (!super.has(registryEntry)) this.bindKeylets(composite.split(keyletSeparator));
             super.set(registryEntry, value);
             return this;
@@ -23,7 +24,7 @@ export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof Ord
         {
             const composite = super.resolveKeyComposite(keys);
             if (!composite) return undefined;
-            return super.get(compositePrefix + composite);
+            return super.get(keyValuePrefix + composite);
         }
 
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
@@ -31,14 +32,14 @@ export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof Ord
         {
             const composite = super.resolveKeyComposite(keys);
             if (!composite) return false;
-            return super.has(compositePrefix + composite);
+            return super.has(keyValuePrefix + composite);
         }
 
         // @ts-ignore for memory efficiency, we wrap methods of base map, and thus change signature type
         delete(keys: K): boolean
         {
             const composite = super.resolveKeyComposite(keys);
-            if (!composite || !super.delete(compositePrefix + composite))
+            if (!composite || !super.delete(keyValuePrefix + composite))
                 return false;
             else
                 super.deleteKeyComposite(composite);
@@ -50,7 +51,7 @@ export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof Ord
         *keys(): MapIterator<K>
         {
             for (const key of super.keys())
-                if (typeof key === "string" && key.startsWith(compositePrefix))
+                if (typeof key === "string" && key.startsWith(keyValuePrefix))
                     yield super.keyCompositeToKeys(key.substring(1)) as K;
         }
 
@@ -58,14 +59,14 @@ export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof Ord
         *entries(): MapIterator<K, V>
         {
             for (const key of super.keys())
-                if (typeof key === "string" && key.startsWith(compositePrefix))
+                if (typeof key === "string" && key.startsWith(keyValuePrefix))
                     yield [super.keyCompositeToKeys(key.substring(1)), super.get(key)];
         }
 
         *values(): MapIterator<V>
         {
             for (const key of super.keys())
-                if (typeof key === "string" && key.startsWith(compositePrefix))
+                if (typeof key === "string" && key.startsWith(keyValuePrefix))
                     yield super.get(key) as V;
         }
 
@@ -76,3 +77,4 @@ export function MultikeyMap(IndexingStrategy: typeof UnorderedIndex | typeof Ord
         }
     };
 }
+export type MapQueryResult<K, V> = { key: K; value: V; };
