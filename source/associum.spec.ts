@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { OrderedMultiKeyMap, QueryableStructuredMultiKeyMap, StructuredMultiKeyMap, UnorderedMultiKeyMap, } from "./associum.ts";
-import type { MapQueryResult } from './multikeyMap.ts';
+import type { MapQueryResult } from './associativeMap.ts';
 
 export class UnorderedKeymapTests
 {

@@ -1,7 +1,8 @@
-import type { MapQueryResult } from "../../multikeyMap.ts";
+import type { MapQueryResult } from "../../associativeMap.ts";
 import { StringListIntersector } from "../../helpers/intersection.ts";
-import { type KeyIndexingAPI } from "./indexing.ts";
 import { compositeSeparator, keyIndexPrefix, keyletSeparator } from "../../constants.ts";
+import type { AssociationContainer } from "../base/associationContainer.ts";
+import type { KeyIndexingAPI } from "./indexing.ts";
 
 export interface QueryAbleKeysAPI
 {
@@ -23,7 +24,7 @@ export interface StructuredQueryableKeysAPI<TKeys extends Record<string, TKey>, 
     queryKeysMatching(keyTemplate: Partial<TKeys>): MapQueryResult<TKeys, TValue>[];
 }
 
-export function NonQueryableKeys(Base: new () => KeyIndexingAPI<any>)
+export function NonqueryableKeys(Base: new () => KeyIndexingAPI)
 {
     return class NonqueryableKeys<K, V> extends Base implements QueryAbleKeysAPI
     {
@@ -31,46 +32,93 @@ export function NonQueryableKeys(Base: new () => KeyIndexingAPI<any>)
     };
 }
 
-export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
+export function QueryableKeys(Base: new () => KeyIndexingAPI)
 {
-    return class QueryableKeys<K, V> extends Base implements QueryAbleKeysAPI
+    return class QueryableKeys<K, V> extends (Base as new () => (InstanceType<typeof Base> & KeyIndexingAPI)) implements QueryAbleKeysAPI
     {
         queryable = true;
 
-        getOrCreateKeyComposite(keys: any): string
+        interceptSet(key: any, value: any)
         {
-            const composite = super.getOrCreateKeyComposite(keys);
+            if (!super.interceptSet(key, value)) return false;
 
-            if (super.has(composite)) return composite;
-
-            for (const keylet of new Set(composite.split(keyletSeparator)))
-            {
-                const indexKey = keyIndexPrefix + keylet;
-                const existing = super.get(indexKey) as string | undefined;
-                super.set(indexKey, existing ? existing + compositeSeparator + composite : composite);
-            }
-
-            return composite;
+            this.addToIndices(key);
+            return true;
         }
 
-        deleteKeyComposite(composite: string): void
+        interceptDelete(key: any): boolean
         {
-            for (const keylet of composite.split(keyletSeparator))
-            {
-                const indexKey = keyIndexPrefix + keylet;
-                const compositesStr = super.get(indexKey);
-                if (compositesStr)
-                {
-                    const filteredComposites = compositesStr.split(compositeSeparator).filter(c => c !== composite).join(compositeSeparator);
+            const itemWasDeleted = super.interceptDelete(key);
+            if (itemWasDeleted) this.removeFromIndices(key);
+            return itemWasDeleted;
+        }
 
-                    if (filteredComposites)
-                        super.set(indexKey, filteredComposites);
-                    else
-                        super.delete(indexKey);
+        addToIndices(key: string)
+        {
+            const keylets = key.split(keyletSeparator);
+            for (const keylet of keylets)
+            {
+                const keyletIndexKey = keyIndexPrefix + keylet;
+                const existingComposites = super.get(keyletIndexKey);
+                super.set(keyIndexPrefix + keylet, existingComposites ? (existingComposites + compositeSeparator + key) : key);
+            }
+        }
+
+        removeFromIndices(key: string)
+        {
+            const keylets = key.split(keyletSeparator);
+            for (const keylet of keylets)
+            {
+                const keyletIndexKey = keyIndexPrefix + keylet;
+                const remainingComposites = super.get(keyletIndexKey).split(compositeSeparator).filter(c => c !== key).join(compositeSeparator);
+
+                if (!remainingComposites) super.delete(keyletIndexKey);
+            }
+        }
+
+        queryKeysMatching(keyTemplate: any): MapQueryResult<K, V>[]
+        {
+            const keylets = [];
+            const indicesThatNeedToMatch = [];
+
+            if (!this.resolveKeyQuery(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
+
+            const alreadyChecked = new Set<string>();
+            const results: MapQueryResult<K, V>[] = [];
+
+            for (const index of indicesThatNeedToMatch)
+            {
+                const keylet = keylets[index]!;
+                const compositesStr = super.get(keyIndexPrefix + keylet);
+
+                for (const composite of compositesStr.split(compositeSeparator))
+                {
+                    if (alreadyChecked.has(composite)) continue;
+                    alreadyChecked.add(composite);
+
+                    const compositeKeylets = composite.split(keyletSeparator);
+
+                    if (indicesThatNeedToMatch.every(matchIndex => compositeKeylets[matchIndex] === keylets[matchIndex]))
+                        results.push(this.generateResultObject(composite));
                 }
             }
 
-            super.deleteKeyComposite(composite);
+            return results;
+        }
+
+        queryKeysIndexedWith(keys: any[]): MapQueryResult<K, V>[]
+        {
+            const keylets: string[] = [];
+            for (const key of keys)
+            {
+                const keylet = this.encodeEntity(key, false);
+                if (keylet === undefined) return [];
+                keylets.push(keylet);
+            }
+
+            return this
+                .findCompositesContainingAllOf(keylets as string[])
+                .map((compositeKey: string) => this.generateResultObject(compositeKey));
         }
 
         findCompositesContainingAllOf(keylets: string[])
@@ -84,71 +132,6 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             }
 
             return intersector.computeIntersection();
-        }
-
-        generateResultObject(compositeKey: string): MapQueryResult<K, V>
-        {
-            const key = this.keyCompositeToKeys(compositeKey) as K;
-            const value = super.get(compositeKey) as V;
-
-            return { key, value };
-        }
-
-        queryKeysMatching(keyTemplate: any): MapQueryResult<K, V>[]
-        {
-            const keylets = this.normalizeStructuralKeyQuery(keyTemplate);
-
-            if (!keylets) return [];
-
-            const indicesThatNeedToMatch: number[] = [];
-
-            for (let index = 0; index < keylets.length; index++)
-            {
-                if (keylets[index] !== undefined)
-                {
-                    indicesThatNeedToMatch.push(index);
-                }
-            }
-
-            const alreadyChecked = new Set<string>();
-            const results: MapQueryResult<K, V>[] = [];
-
-            for (const index of indicesThatNeedToMatch)
-            {
-                const keylet = keylets[index]!;
-                const compositesStr = super.get(keyIndexPrefix + keylet);
-                if (!compositesStr) continue;
-
-                for (const composite of compositesStr.split(compositeSeparator))
-                {
-                    if (alreadyChecked.has(composite)) continue;
-                    alreadyChecked.add(composite);
-
-                    const compositeKeylets = composite.split(keyletSeparator);
-
-                    if (indicesThatNeedToMatch.every(idx => compositeKeylets[idx] === keylets[idx]))
-                    {
-                        results.push(this.generateResultObject(composite));
-                    }
-                }
-            }
-
-            return results;
-        }
-
-        queryKeysIndexedWith(keys: any[]): MapQueryResult<K, V>[]
-        {
-            const keylets: string[] = [];
-            for (const key of keys)
-            {
-                const k = this.resolveKeylet(key);
-                if (k === undefined) return [];
-                keylets.push(k);
-            }
-
-            return this
-                .findCompositesContainingAllOf(keylets as string[])
-                .map((compositeKey: string) => this.generateResultObject(compositeKey));
         }
     };
 }

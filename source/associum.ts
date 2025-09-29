@@ -1,25 +1,25 @@
-import { MultikeyMap, type MapQueryResult } from "./multikeyMap.ts";
-import { type KeyIndexingBaseAPI, OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/keys/indexing.ts";
-import { NonQueryableKeys, type OrderedQueryableKeysAPI, type QueryAbleKeysAPI, QueryableKeys, type StructuredQueryableKeysAPI, type UnorderedQueryableKeysAPI } from "./mixins/keys/queryability.ts";
+import { type KeyIndexingAPI, OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/keys/indexing.ts";
+import { NonqueryableKeys, type OrderedQueryableKeysAPI, type QueryAbleKeysAPI, QueryableKeys, type StructuredQueryableKeysAPI, type UnorderedQueryableKeysAPI } from "./mixins/keys/queryability.ts";
+import { type MapQueryResult, AssociativeMap } from "./associativeMap.ts";
 
-export const UnorderedMultiKeyMap = MultikeyMap(UnorderedIndex, NonQueryableKeys) as new <K extends any[], V>() =>
-    (Map<K, V> & KeyIndexingBaseAPI & QueryAbleKeysAPI);
-export const OrderedMultiKeyMap = MultikeyMap(OrderedIndex, NonQueryableKeys) as new <K extends any[], V>() =>
-    (Map<K, V> & KeyIndexingBaseAPI & QueryAbleKeysAPI);
-export const StructuredMultiKeyMap = MultikeyMap(StructuredIndex, NonQueryableKeys) as new <K extends Record<string, any>, V>() =>
-    (Map<K, V> & KeyIndexingBaseAPI & QueryAbleKeysAPI);
 
-export const QueryableUnorderedMultiKeyMap = MultikeyMap(UnorderedIndex, QueryableKeys) as unknown as new <K extends any[], V>() =>
+export type { MapQueryResult };
+export const UnorderedMultiKeyMap = AssociativeMap(UnorderedIndex, NonqueryableKeys) as new <K extends any[], V>() =>
+    (Map<K, V> & KeyIndexingAPI & QueryAbleKeysAPI);
+export const OrderedMultiKeyMap = AssociativeMap(OrderedIndex, NonqueryableKeys) as new <K extends any[], V>() =>
+    (Map<K, V> & KeyIndexingAPI & QueryAbleKeysAPI);
+export const StructuredMultiKeyMap = AssociativeMap(StructuredIndex, NonqueryableKeys) as new <K extends Record<string, any>, V>() =>
+    (Map<K, V> & KeyIndexingAPI & QueryAbleKeysAPI);
+
+export const QueryableUnorderedMultiKeyMap = AssociativeMap(UnorderedIndex, QueryableKeys) as unknown as new <K extends any[], V>() =>
     K extends (infer E)[]
-    ? (Map<K, V> & KeyIndexingBaseAPI & UnorderedQueryableKeysAPI<K, E, V>)
+    ? (Map<K, V> & KeyIndexingAPI & UnorderedQueryableKeysAPI<K, E, V>)
     : never;
-export const QueryableOrderedMultiKeyMap = MultikeyMap(OrderedIndex, QueryableKeys) as unknown as new <K extends any[], V>() =>
+export const QueryableOrderedMultiKeyMap = AssociativeMap(OrderedIndex, QueryableKeys) as unknown as new <K extends any[], V>() =>
     K extends (infer E)[]
-    ? (Map<K, V> & KeyIndexingBaseAPI & OrderedQueryableKeysAPI<K, E, V>)
+    ? (Map<K, V> & KeyIndexingAPI & OrderedQueryableKeysAPI<K, E, V>)
     : never;
-export const QueryableStructuredMultiKeyMap = MultikeyMap(StructuredIndex, QueryableKeys) as unknown as new <K extends Record<string, any>, V>() =>
+export const QueryableStructuredMultiKeyMap = AssociativeMap(StructuredIndex, QueryableKeys) as unknown as new <K extends Record<string, any>, V>() =>
     K extends Record<string, infer E>
-    ? (Map<K, V> & KeyIndexingBaseAPI & StructuredQueryableKeysAPI<K, E, V>)
+    ? (Map<K, V> & KeyIndexingAPI & StructuredQueryableKeysAPI<K, E, V>)
     : never;
-
-export type { MapQueryResult as MultikeyMapQueryResult };
