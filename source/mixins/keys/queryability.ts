@@ -1,7 +1,7 @@
 import type { MapQueryResult } from "../../multikeyMap.ts";
 import { StringListIntersector } from "../../helpers/intersection.ts";
 import { type KeyIndexingAPI } from "./indexing.ts";
-import type { keyletSeparator } from "../../constants.ts";
+import { compositeSeparator, keyIndexPrefix, keyletSeparator } from "../../constants.ts";
 
 export interface QueryAbleKeysAPI
 {
@@ -37,8 +37,6 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
     {
         queryable = true;
 
-        keyletsToComposites: Map<string, string> = new Map<string, string>();
-
         getOrCreateKeyComposite(keys: any): string
         {
             const composite = super.getOrCreateKeyComposite(keys);
@@ -47,8 +45,9 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
 
             for (const keylet of new Set(composite.split(keyletSeparator)))
             {
-                const existing = this.keyletsToComposites.get(keylet) as string | undefined;
-                this.keyletsToComposites.set(keylet, existing ? existing + compositeSeparator + composite : composite);
+                const indexKey = keyIndexPrefix + keylet;
+                const existing = super.get(indexKey) as string | undefined;
+                super.set(indexKey, existing ? existing + compositeSeparator + composite : composite);
             }
 
             return composite;
@@ -58,18 +57,16 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
         {
             for (const keylet of composite.split(keyletSeparator))
             {
-                const compositesStr = this.keyletsToComposites.get(keylet);
+                const indexKey = keyIndexPrefix + keylet;
+                const compositesStr = super.get(indexKey);
                 if (compositesStr)
                 {
                     const filteredComposites = compositesStr.split(compositeSeparator).filter(c => c !== composite).join(compositeSeparator);
 
                     if (filteredComposites)
-                    {
-                        this.keyletsToComposites.set(keylet, filteredComposites);
-                    } else
-                    {
-                        this.keyletsToComposites.delete(keylet);
-                    }
+                        super.set(indexKey, filteredComposites);
+                    else
+                        super.delete(indexKey);
                 }
             }
 
@@ -82,7 +79,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
 
             for (const keylet of keylets)
             {
-                const comps = this.keyletsToComposites.get(keylet)?.split(compositeSeparator) || [];
+                const comps = super.get(keyIndexPrefix + keylet)?.split(compositeSeparator) || [];
                 intersector.addToIntersection(comps);
             }
 
@@ -91,13 +88,13 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
 
         generateResultObject(compositeKey: string): MapQueryResult<K, V>
         {
-            const key = (this as any).compositeToKeys(compositeKey) as K;
+            const key = this.keyCompositeToKeys(compositeKey) as K;
             const value = super.get(compositeKey) as V;
 
             return { key, value };
         }
 
-        query(keyTemplate: any): MapQueryResult<K, V>[]
+        queryKeysMatching(keyTemplate: any): MapQueryResult<K, V>[]
         {
             const keylets = this.normalizeStructuralKeyQuery(keyTemplate);
 
@@ -119,7 +116,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             for (const index of indicesThatNeedToMatch)
             {
                 const keylet = keylets[index]!;
-                const compositesStr = this.keyletsToComposites.get(keylet);
+                const compositesStr = super.get(keyIndexPrefix + keylet);
                 if (!compositesStr) continue;
 
                 for (const composite of compositesStr.split(compositeSeparator))
@@ -139,7 +136,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI<any>)
             return results;
         }
 
-        queryIndexedWith(keys: any[]): MapQueryResult<K, V>[]
+        queryKeysIndexedWith(keys: any[]): MapQueryResult<K, V>[]
         {
             const keylets: string[] = [];
             for (const key of keys)
