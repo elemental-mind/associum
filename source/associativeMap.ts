@@ -1,7 +1,6 @@
 import { type UnorderedIndex, type OrderedIndex, type StructuredIndex } from "./mixins/keys/normalization.ts";
 import { AssociationContainer } from "./mixins/base/associationContainer.ts";
 import type { NonqueryableKeys, QueryableKeys } from "./mixins/keys/queryability.ts";
-import { keyletSeparator } from "./constants.ts";
 
 export function AssociativeMap(IndexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, QueryStrategy: typeof QueryableKeys | typeof NonqueryableKeys)
 {
@@ -9,14 +8,14 @@ export function AssociativeMap(IndexingStrategy: typeof UnorderedIndex | typeof 
     {
         interceptSet(key: K, value: any)
         {
-            return super.interceptSet(super.encodeSettingKey(key), this.normalizeValue(value));
+            return super.interceptSet(super.encodeSettingKey(key), this.encodeValue(value));
         }
 
         interceptGet(key: K): V | undefined
         {
             const keylets = this.encodeRetrievalKey(key);
             if (!keylets) return undefined;
-            return super.interceptGet(keylets);
+            return this.decodeValue(super.interceptGet(keylets));
         }
 
         interceptHas(key: K): boolean

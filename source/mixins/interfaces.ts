@@ -31,7 +31,7 @@ export interface KeyNormalizationAPI<K>
 
 export interface ValueNormalizationAPI<V>
 {
-    normalizeValue(value: V): string[];
+    encodeValue(value: V): string[];
 
     decodeValue(keylets: string[]): any;
 }

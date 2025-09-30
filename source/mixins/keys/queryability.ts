@@ -18,14 +18,14 @@ export function QueryableKeys(Base: new () => AssociationContainer)
         interceptSet(keylets: string[], value: any)
         {
             if (!super.interceptSet(keylets, value)) return false;
-            this.addToIndices(keylets);
+            this.addToIndex(keylets);
             return true;
         }
 
         interceptDelete(keylets: string[]): boolean
         {
             const itemWasDeleted = super.interceptDelete(keylets);
-            if (itemWasDeleted) this.removeFromIndices(keylets);
+            if (itemWasDeleted) this.removeFromIndex(keylets);
             return itemWasDeleted;
         }
 
@@ -86,14 +86,14 @@ export function QueryableKeys(Base: new () => AssociationContainer)
                 const compositeKeylets = composite.split(keyletSeparator);
                 results.push({
                     key: this.decodeKey(compositeKeylets) as K,
-                    value: this.decodeValue(super.get(keyValuePrefix + composite)) as V
+                    value: super.interceptGet(compositeKeylets) as V
                 });
             }
 
             return results;
         }
 
-        addToIndices(keylets: string[])
+        addToIndex(keylets: string[])
         {
             for (const keylet of keylets)
             {
@@ -104,7 +104,7 @@ export function QueryableKeys(Base: new () => AssociationContainer)
             }
         }
 
-        removeFromIndices(keylets: string[])
+        removeFromIndex(keylets: string[])
         {
             for (const keylet of keylets)
             {

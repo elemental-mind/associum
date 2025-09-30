@@ -1,6 +1,6 @@
 import { IDProvider } from "identigenium";
 import { AlphaNumeric } from "identigenium/sets";
-import { keyletUseCountPrefix, stringEscapePrefix } from "../../constants.ts";
+import { keyletSeparator, keyletUseCountPrefix, keyValuePrefix, stringEscapePrefix } from "../../constants.ts";
 import type { AssociationAPI, InterceptionAPI, KeyNormalizationAPI, ValueNormalizationAPI } from "../interfaces.ts";
 
 export class AssociationContainer extends Map<any, any> implements InterceptionAPI, KeyNormalizationAPI<any>, ValueNormalizationAPI<any>, AssociationAPI
@@ -13,28 +13,28 @@ export class AssociationContainer extends Map<any, any> implements InterceptionA
         return this.mappingsCount;
     }
 
-    interceptSet(key: any, value: any): boolean
+    interceptSet(keylets: string[], value: any): boolean
     {
         const previousSize = super.size;
-        super.set(key, value);
+        super.set(keyValuePrefix + keylets.join(keyletSeparator), value);
         if (super.size === previousSize) return false;
         this.mappingsCount++;
         return true;
     }
 
-    interceptGet(key: any)
+    interceptGet(keylets: string[])
     {
-        return super.get(key);
+        return super.get(keyValuePrefix + keylets.join(keyletSeparator));
     }
 
-    interceptHas(key: any)
+    interceptHas(keylets: string[])
     {
-        return super.has(key);
+        return super.has(keyValuePrefix + keylets.join(keyletSeparator));
     }
 
-    interceptDelete(key: any)
+    interceptDelete(keylets: string[])
     {
-        const itemWasDeleted = super.delete(key);
+        const itemWasDeleted = super.delete(keyValuePrefix + keylets.join(keyletSeparator));
         if (itemWasDeleted) this.mappingsCount--;
         return itemWasDeleted;
     }
@@ -81,14 +81,14 @@ export class AssociationContainer extends Map<any, any> implements InterceptionA
         throw new Error("Method not implemented.");
     }
 
-    normalizeValue(value: any): string[]
+    encodeValue(value: any): any
     {
         return value;
     }
 
-    decodeValue(keylets: string[])
+    decodeValue(keyletsOrValue: any)
     {
-        throw new Error("Method not implemented.");
+        return keyletsOrValue;
     }
 
     toKeylet(value: any, createIfMissing: true): string;
@@ -111,7 +111,7 @@ export class AssociationContainer extends Map<any, any> implements InterceptionA
         }
     }
 
-    fromKeylet(keylet: any): string | undefined
+    fromKeylet(keylet: any): any | undefined
     {
         return super.get(keylet);
     }
