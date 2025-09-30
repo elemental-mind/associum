@@ -1,41 +1,30 @@
-import { keyletSeparator } from "../../constants.ts";
 import type { AssociationContainer } from "../base/associationContainer.ts";
+import { KeyIndexType } from "../interfaces.ts";
 
-export enum KeyIndexType
+export function OrderedIndex(Base: new () => AssociationContainer)
 {
-    Unordered,
-    Ordered,
-    Structured,
-}
-
-export interface KeyIndexingAPI extends AssociationContainer
-{
-    readonly keyIndexType: KeyIndexType;
-    resolveKeyQuery(keyTemplate: any[], keylets: string[], matchIndices: number[]): boolean;
-}
-
-function IndexBase(Base: new () => AssociationContainer)
-{
-    return class IndexingBaseMixin<K, V> extends Base
+    return class OrderedIndex<K extends any[], V> extends Base
     {
-        encodeKey(key: any[], throwOnUndefined: boolean = false): string[]
+        keyIndexType = KeyIndexType.Ordered;
+
+        encodeSettingKey(key: any[], throwOnUndefined: boolean = false): string[]
         {
             const keylets = [];
             for (const subKey of key)
                 if (subKey === undefined && throwOnUndefined)
                     throw new Error("Cannot use keys containing `undefined`");
                 else
-                    keylets.push(this.encodeEntity(subKey, true));
+                    keylets.push(this.toKeylet(subKey, true));
 
             return keylets;
         }
 
-        resolveKey(key: any[]): string[] | undefined
+        encodeRetrievalKey(key: any[]): string[] | undefined
         {
             const keylets = [];
             for (const subKey of key)
             {
-                const keylet = this.encodeEntity(subKey, false);
+                const keylet = this.toKeylet(subKey, false);
                 if (!keylet) return undefined;
                 keylets.push(keylet);
             }
@@ -43,14 +32,14 @@ function IndexBase(Base: new () => AssociationContainer)
             return keylets;
         }
 
-        resolveKeyQuery(keyTemplate: any[], keylets: string[], matchIndices: number[])
+        encodeQueryKey(keyTemplate: any[], keylets: string[], matchIndices: number[])
         {
             let isValidQuery = true;
             //We use the property of `every` to break at first false return value - and its property to skip sparse elements in an array;
             keyTemplate.every((key, index) =>
             {
                 matchIndices.push(index);
-                const keylet = this.encodeEntity(key, false);
+                const keylet = this.toKeylet(key, false);
                 if (keylet)
                     keylets[index] = keylet;
                 else
@@ -60,69 +49,40 @@ function IndexBase(Base: new () => AssociationContainer)
             return isValidQuery;
         }
 
-        interceptSet(key: K, value: any)
+        decodeKey(keylets: string[])
         {
-            const keylets = this.encodeKey(key as any[]);
-            return super.interceptSet(keylets.join(keyletSeparator), value);
-        }
-
-        interceptGet(key: K): V | undefined
-        {
-            const keylets = this.resolveKey(key as any[]);
-            if (!keylets) return undefined;
-            return super.interceptGet(keylets.join(keyletSeparator));
-        }
-
-        interceptHas(key: K): boolean
-        {
-            const keylets = this.resolveKey(key as any[]);
-            if (!keylets) return false;
-            return super.interceptHas(keylets.join(keyletSeparator));
-        }
-
-        interceptDelete(key: K): boolean
-        {
-            const keylets = this.resolveKey(key as any[]);
-            if (!keylets) return false;
-            if (!super.interceptDelete(keylets.join(keyletSeparator))) return false;
-
-            super.releaseEncodings(keylets);
+            const key = [];
+            for (const keylet of keylets)
+                key.push(super.get(keylet)!);
+            return key;
         }
     };
 }
 
 export function UnorderedIndex(Base: new () => AssociationContainer)
 {
-    return class UnorderedIndex<K extends any[], V> extends IndexBase(Base)<K, V> implements KeyIndexingAPI
+    return class UnorderedIndex<K extends any[], V> extends OrderedIndex(Base)<K, V>
     {
         keyIndexType = KeyIndexType.Unordered;
 
-        encodeKey(key: any[]): string[] | undefined
+        encodeSettingKey(key: any[]): string[] | undefined
         {
-            return super.encodeKey(key, true).sort();
+            return super.encodeSettingKey(key, true).sort();
         }
 
-        resolveKey(key: any[])
+        encodeRetrievalKey(key: any[])
         {
-            const keylets = super.resolveKey(key);
+            const keylets = super.encodeRetrievalKey(key);
             if (!keylets) return undefined;
             return keylets.sort();
         }
     };
 }
 
-export function OrderedIndex(Base: new () => AssociationContainer)
-{
-    return class OrderedIndex<K extends any[], V> extends IndexBase(Base)<K, V> implements KeyIndexingAPI
-    {
-        keyIndexType = KeyIndexType.Ordered;
-    };
-}
-
 export function StructuredIndex(Base: new () => AssociationContainer)
 {
     //@ts-ignore
-    return class StructuredIndex<K extends Record<string, any>, V> extends OrderedIndex(Base)<K, V> implements KeyIndexingAPI
+    return class StructuredIndex<K extends Record<string, any>, V> extends OrderedIndex(Base)<K, V>
     {
         keyIndexType = KeyIndexType.Structured;
 
@@ -130,26 +90,33 @@ export function StructuredIndex(Base: new () => AssociationContainer)
         fieldMap: Record<string, number> = Object.create(null);
 
         //@ts-ignore
-        encodeKey(key: K): string[]
+        encodeSettingKey(key: K): string[]
         {
             const keyArray = this.keyObjectToKeyArray(key, true);
-            return super.encodeKey(keyArray, false);
+            return super.encodeSettingKey(keyArray, false);
         }
 
         //@ts-ignore
-        resolveKey(key: K): string[] | undefined
+        encodeRetrievalKey(key: K): string[] | undefined
         {
-            const keyArray = this.keyObjectToKeyArray(key as K, false);
+            const keyArray = this.keyObjectToKeyArray(key, false);
             if (!keyArray) return undefined;
-            return super.resolveKey(keyArray);
+            return super.encodeRetrievalKey(keyArray);
         }
 
         //@ts-ignore
-        resolveKeyQuery(keyTemplate: Partial<K>, keylets: string[], matchIndices: number[]): boolean
+        encodeQueryKey(keyTemplate: Partial<K>, keylets: string[], matchIndices: number[]): boolean
         {
             const keyArray = this.keyObjectToKeyArray(keyTemplate as K, false);
             if (!keyArray) return false;
-            super.resolveKeyQuery(keyArray, keylets, matchIndices);
+            super.encodeQueryKey(keyArray, keylets, matchIndices);
+        }
+
+        //@ts-ignore
+        decodeKey(keylets: string[])
+        {
+            const keys = super.decodeKey(keylets);
+            return this.keyArrayToKeyObject(keys);
         }
 
         keyObjectToKeyArray(keyObject: K, registerNewEntries: boolean): any[] | undefined

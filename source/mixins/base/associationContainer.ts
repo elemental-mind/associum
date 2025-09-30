@@ -1,8 +1,9 @@
 import { IDProvider } from "identigenium";
 import { AlphaNumeric } from "identigenium/sets";
 import { keyletUseCountPrefix, stringEscapePrefix } from "../../constants.ts";
+import type { AssociationAPI, InterceptionAPI, KeyNormalizationAPI, ValueNormalizationAPI } from "../interfaces.ts";
 
-export class AssociationContainer extends Map<any, any> 
+export class AssociationContainer extends Map<any, any> implements InterceptionAPI, KeyNormalizationAPI<any>, ValueNormalizationAPI<any>, AssociationAPI
 {
     idProvider = new IDProvider(AlphaNumeric);
     mappingsCount = 0;
@@ -21,8 +22,6 @@ export class AssociationContainer extends Map<any, any>
         return true;
     }
 
-    //These method stubs are necessary to silence TypeScript errors about non-super methods.
-    //It would be better to assign map methods in a static block in combination with declares, but that causes type issues - for now we will leave it as is.
     interceptGet(key: any)
     {
         return super.get(key);
@@ -62,12 +61,39 @@ export class AssociationContainer extends Map<any, any>
         return super.values();
     };
 
-    //Keylet encoding/decoding
+    encodeSettingKey(key: any): string[]
+    {
+        return key;
+    }
 
-    //Maps original value to a keylet
-    encodeEntity(value: any, createIfMissing: true): string;
-    encodeEntity(value: any, createIfMissing?: false): string | undefined;
-    encodeEntity(value: any, createIfMissing = false): string | undefined
+    encodeRetrievalKey(key: any): string[]
+    {
+        return key;
+    }
+
+    encodeQueryKey(key: unknown[] | Partial<any>, keylets: string[], matchIndices: number[]): boolean
+    {
+        throw new Error("Key Queries not supported");
+    }
+
+    decodeKey(keylets: string[])
+    {
+        throw new Error("Method not implemented.");
+    }
+
+    normalizeValue(value: any): string[]
+    {
+        return value;
+    }
+
+    decodeValue(keylets: string[])
+    {
+        throw new Error("Method not implemented.");
+    }
+
+    toKeylet(value: any, createIfMissing: true): string;
+    toKeylet(value: any, createIfMissing?: false): string | undefined;
+    toKeylet(value: any, createIfMissing = false): string | undefined
     {
         const normalizedKeyletAccessor = typeof value === "string" ? stringEscapePrefix + value : value;
 
@@ -85,15 +111,12 @@ export class AssociationContainer extends Map<any, any>
         }
     }
 
-    //Maps keylet back to original value
-    decodeEntity(keylet: any): string | undefined
+    fromKeylet(keylet: any): string | undefined
     {
         return super.get(keylet);
     }
 
-    //Memory management for keylets
-
-    bindEncodings(keylets: string[])
+    bindKeylets(keylets: string[])
     {
         for (const keylet of keylets)
         {
@@ -102,7 +125,7 @@ export class AssociationContainer extends Map<any, any>
         }
     }
 
-    releaseEncodings(keylets: string[])
+    releaseKeylets(keylets: string[])
     {
         for (const keylet of keylets)
         {

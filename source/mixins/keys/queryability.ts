@@ -1,79 +1,32 @@
-import type { MapQueryResult } from "../../associativeMap.ts";
+import { compositeSeparator, keyIndexPrefix, keyletSeparator, keyValuePrefix } from "../../constants.ts";
 import { StringListIntersector } from "../../helpers/intersection.ts";
-import { compositeSeparator, keyIndexPrefix, keyletSeparator } from "../../constants.ts";
 import type { AssociationContainer } from "../base/associationContainer.ts";
-import type { KeyIndexingAPI } from "./indexing.ts";
+import type { MapQueryResult } from "../interfaces.ts";
 
-export interface QueryAbleKeysAPI
+export function NonqueryableKeys(Base: new () => AssociationContainer)
 {
-    readonly queryable: boolean;
+    Base.prototype.keysQueryable = false;
+    return Base;
 }
 
-export interface UnorderedQueryableKeysAPI<TKeys, TKey, TValue> extends QueryAbleKeysAPI
+export function QueryableKeys(Base: new () => AssociationContainer)
 {
-    queryKeysIndexedWith(keys: TKey[]): MapQueryResult<TKeys, TValue>[];
-}
-
-export interface OrderedQueryableKeysAPI<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
-{
-    queryKeysMatching(keyTemplate: (TKey | undefined)[]): MapQueryResult<TKeys, TValue>[];
-}
-
-export interface StructuredQueryableKeysAPI<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
-{
-    queryKeysMatching(keyTemplate: Partial<TKeys>): MapQueryResult<TKeys, TValue>[];
-}
-
-export function NonqueryableKeys(Base: new () => KeyIndexingAPI)
-{
-    return class NonqueryableKeys<K, V> extends Base implements QueryAbleKeysAPI
+    class QueryableKeys<K, V> extends Base
     {
-        queryable = false;
-    };
-}
+        declare keysQueryable: boolean;
 
-export function QueryableKeys(Base: new () => KeyIndexingAPI)
-{
-    return class QueryableKeys<K, V> extends (Base as new () => (InstanceType<typeof Base> & KeyIndexingAPI)) implements QueryAbleKeysAPI
-    {
-        queryable = true;
-
-        interceptSet(key: any, value: any)
+        interceptSet(keylets: string[], value: any)
         {
-            if (!super.interceptSet(key, value)) return false;
-
-            this.addToIndices(key);
+            if (!super.interceptSet(keylets, value)) return false;
+            this.addToIndices(keylets);
             return true;
         }
 
-        interceptDelete(key: any): boolean
+        interceptDelete(keylets: string[]): boolean
         {
-            const itemWasDeleted = super.interceptDelete(key);
-            if (itemWasDeleted) this.removeFromIndices(key);
+            const itemWasDeleted = super.interceptDelete(keylets);
+            if (itemWasDeleted) this.removeFromIndices(keylets);
             return itemWasDeleted;
-        }
-
-        addToIndices(key: string)
-        {
-            const keylets = key.split(keyletSeparator);
-            for (const keylet of keylets)
-            {
-                const keyletIndexKey = keyIndexPrefix + keylet;
-                const existingComposites = super.get(keyletIndexKey);
-                super.set(keyIndexPrefix + keylet, existingComposites ? (existingComposites + compositeSeparator + key) : key);
-            }
-        }
-
-        removeFromIndices(key: string)
-        {
-            const keylets = key.split(keyletSeparator);
-            for (const keylet of keylets)
-            {
-                const keyletIndexKey = keyIndexPrefix + keylet;
-                const remainingComposites = super.get(keyletIndexKey).split(compositeSeparator).filter(c => c !== key).join(compositeSeparator);
-
-                if (!remainingComposites) super.delete(keyletIndexKey);
-            }
         }
 
         queryKeysMatching(keyTemplate: any): MapQueryResult<K, V>[]
@@ -81,7 +34,7 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI)
             const keylets = [];
             const indicesThatNeedToMatch = [];
 
-            if (!this.resolveKeyQuery(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
+            if (!this.encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
 
             const alreadyChecked = new Set<string>();
             const results: MapQueryResult<K, V>[] = [];
@@ -99,7 +52,10 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI)
                     const compositeKeylets = composite.split(keyletSeparator);
 
                     if (indicesThatNeedToMatch.every(matchIndex => compositeKeylets[matchIndex] === keylets[matchIndex]))
-                        results.push(this.generateResultObject(composite));
+                        results.push({
+                            key: this.decodeKey(compositeKeylets) as K,
+                            value: this.decodeValue(super.get(keyValuePrefix + composite)) as V
+                        });
                 }
             }
 
@@ -108,21 +64,12 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI)
 
         queryKeysIndexedWith(keys: any[]): MapQueryResult<K, V>[]
         {
-            const keylets: string[] = [];
-            for (const key of keys)
-            {
-                const keylet = this.encodeEntity(key, false);
-                if (keylet === undefined) return [];
-                keylets.push(keylet);
-            }
+            const keylets = [];
+            const indicesThatNeedToMatch = [];
 
-            return this
-                .findCompositesContainingAllOf(keylets as string[])
-                .map((compositeKey: string) => this.generateResultObject(compositeKey));
-        }
+            if (!this.encodeQueryKey(keys, keylets, indicesThatNeedToMatch)) return [];
 
-        findCompositesContainingAllOf(keylets: string[])
-        {
+            // Inline findCompositesContainingAllOf
             const intersector = new StringListIntersector();
 
             for (const keylet of keylets)
@@ -131,7 +78,45 @@ export function QueryableKeys(Base: new () => KeyIndexingAPI)
                 intersector.addToIntersection(comps);
             }
 
-            return intersector.computeIntersection();
+            const compositeKeys = intersector.computeIntersection();
+
+            const results = [];
+            for (const composite of compositeKeys)
+            {
+                const compositeKeylets = composite.split(keyletSeparator);
+                results.push({
+                    key: this.decodeKey(compositeKeylets) as K,
+                    value: this.decodeValue(super.get(keyValuePrefix + composite)) as V
+                });
+            }
+
+            return results;
         }
-    };
+
+        addToIndices(keylets: string[])
+        {
+            for (const keylet of keylets)
+            {
+                const keyletIndexKey = keyIndexPrefix + keylet;
+                const existingComposites = super.get(keyletIndexKey);
+                const composite = keylets.join(keyletSeparator);
+                super.set(keyIndexPrefix + keylet, existingComposites ? (existingComposites + compositeSeparator + composite) : composite);
+            }
+        }
+
+        removeFromIndices(keylets: string[])
+        {
+            for (const keylet of keylets)
+            {
+                const keyletIndexKey = keyIndexPrefix + keylet;
+                const composite = keylets.join(keyletSeparator);
+                const remainingComposites = super.get(keyletIndexKey).split(compositeSeparator).filter(c => c !== composite).join(compositeSeparator);
+
+                if (!remainingComposites) super.delete(keyletIndexKey);
+            }
+        }
+    }
+
+    QueryableKeys.prototype.keysQueryable = true;
+    return QueryableKeys;
 }

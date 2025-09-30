@@ -1,32 +1,36 @@
-import { type UnorderedIndex, type OrderedIndex, type StructuredIndex } from "./mixins/keys/indexing.ts";
+import { type UnorderedIndex, type OrderedIndex, type StructuredIndex } from "./mixins/keys/normalization.ts";
 import { AssociationContainer } from "./mixins/base/associationContainer.ts";
 import type { NonqueryableKeys, QueryableKeys } from "./mixins/keys/queryability.ts";
+import { keyletSeparator } from "./constants.ts";
 
 export function AssociativeMap(IndexingStrategy: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex, QueryStrategy: typeof QueryableKeys | typeof NonqueryableKeys)
 {
-    const Base = QueryStrategy(IndexingStrategy(AssociationContainer));
-
-    return class AssociativeMap<K, V> extends Base<K, V>
+    return class AssociativeMap<K, V> extends AssociationContainer
     {
-        //Rereoute Map methods to intercepted versions
-        //This is done to allow mixins to access the underlying map via super without interference
-        //while still allowing users to use the Map methods directly on the final class
-        //See documentation/code-architecture.md for more information
-        static {
-            this.prototype.get = this.prototype.interceptGet;
-            this.prototype.has = this.prototype.interceptHas;
-            this.prototype.delete = this.prototype.interceptDelete;
-            this.prototype.keys = this.prototype.interceptKeys;
-            this.prototype.entries = this.prototype.interceptEntries;
-            this.prototype.values = this.prototype.interceptValues;
+        interceptSet(key: K, value: any)
+        {
+            return super.interceptSet(super.encodeSettingKey(key), this.normalizeValue(value));
         }
 
-        set(key: K, value: V): this
+        interceptGet(key: K): V | undefined
         {
-            this.interceptSet(key, value);
-            return this;
+            const keylets = this.encodeRetrievalKey(key);
+            if (!keylets) return undefined;
+            return super.interceptGet(keylets);
+        }
+
+        interceptHas(key: K): boolean
+        {
+            const keylets = this.encodeRetrievalKey(key);
+            if (!keylets) return false;
+            return super.interceptHas(keylets);
+        }
+
+        interceptDelete(key: K): boolean
+        {
+            const keylets = this.encodeRetrievalKey(key);
+            if (!keylets) return false;
+            return super.interceptDelete(keylets);
         }
     };
 }
-
-export type MapQueryResult<K, V> = { key: K; value: V; };
