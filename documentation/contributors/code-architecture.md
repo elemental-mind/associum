@@ -41,7 +41,7 @@ The problem is that different mixins alter the entry creation/destruction/lookup
 We hence introduce different tracks in our prototype architecture.
 We divert the original calls to our internal method names, which can then be intercepted - freeing every Mixin to use super.set etc... to access the underlying map unintercepted.
 
-![Prototype Architecture Diagram](media/prototype.drawio.svg)
+![Prototype Architecture Diagram](../media/prototype.drawio.svg)
 
 This way each mixin is free to use `super.set` etc. and know that it's accessing the base map, and can call `super.interceptSet` for other mixins to intercept.
 
