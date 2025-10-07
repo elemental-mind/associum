@@ -22,6 +22,7 @@
     "test": "tsc --noemit && node --no-warnings --experimental-transform-types test/test.ts"
   },
   "dependencies": {
+    "asciinumerium": "^1.1.0",
     "identigenium": "^1.0.2"
   },
   "devDependencies": {
