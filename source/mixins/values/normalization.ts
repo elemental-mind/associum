@@ -38,9 +38,9 @@ export function ArrayValued(Base: new () => AssociationContainer)
         {
             const previous = super.interceptGet(keylets) as string | undefined;
             if (previous !== undefined)
-                this.releaseKeylets(previous.split(compositeSeparator));
+                this.releaseKeylets(previous.split(compositeSeparator), keylets);
 
-            this.bindKeylets(value.split(compositeSeparator));
+            this.bindKeylets(value.split(compositeSeparator), keylets);
             return super.interceptSet(keylets, value);
         }
 
@@ -48,7 +48,7 @@ export function ArrayValued(Base: new () => AssociationContainer)
         {
             const value = super.interceptGet(keylets) as string | undefined;
             if (value !== undefined)
-                this.releaseKeylets(value.split(compositeSeparator));
+                this.releaseKeylets(value.split(compositeSeparator), keylets);
 
             return super.interceptDelete(keylets);
         }
@@ -175,7 +175,7 @@ export function ArrayValued(Base: new () => AssociationContainer)
             }
             else // All
             {
-                const patchedString = existingEntries
+                patchedString = existingEntries
                     .split(compositeSeparator)
                     .filter(entry =>
                     {
@@ -186,8 +186,8 @@ export function ArrayValued(Base: new () => AssociationContainer)
                     .join(compositeSeparator);
             }
 
-            this.adjustLength(accessKeylets, deletedEntries);
-            //Ok, very hacky for now - but it's just proof of concept for now.
+            this.adjustLength(accessKeylets, -deletedEntries);
+            //Ok, very hacky - but it's just a proof of concept for now.
             this.releaseKeylets(new Array(deletedEntries).fill(targetKeylet));
 
             return true;

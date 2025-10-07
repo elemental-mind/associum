@@ -116,7 +116,7 @@ export class AssociationContainer extends Map<any, any> implements InterceptionA
         return super.get(keylet);
     }
 
-    bindKeylets(keylets: string[])
+    bindKeylets(keylets: string[], bindToKey?: string[])
     {
         for (const keylet of keylets)
         {
@@ -125,7 +125,7 @@ export class AssociationContainer extends Map<any, any> implements InterceptionA
         }
     }
 
-    releaseKeylets(keylets: string[])
+    releaseKeylets(keylets: string[], releaseFromKey?: string[])
     {
         for (const keylet of keylets)
         {
