@@ -7,6 +7,22 @@ export function OrderedIndex(Base: new () => AssociationContainer)
     {
         keyIndexType = KeyIndexType.Ordered;
 
+        interceptSet(keylets: string[], value: any): boolean
+        {
+            const itemWasAdded = super.interceptSet(keylets, value);
+            if (itemWasAdded)
+                this.bindKeylets(keylets);
+            return itemWasAdded;
+        }
+
+        interceptDelete(keylets: string[]): boolean
+        {
+            const itemWasDeleted = super.interceptDelete(keylets);
+            if (itemWasDeleted)
+                this.releaseKeylets(keylets);
+            return itemWasDeleted;
+        }
+
         encodeSettingKey(key: any[], throwOnUndefined: boolean = false): string[]
         {
             const keylets = [];

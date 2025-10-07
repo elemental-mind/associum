@@ -15,18 +15,37 @@ export function QueryableKeys(Base: new () => AssociationContainer)
     {
         declare keysQueryable: boolean;
 
-        interceptSet(keylets: string[], value: any)
+        bindKeylets(keylets: string[], bindToKey?: string[]): void
         {
-            if (!super.interceptSet(keylets, value)) return false;
-            this.addToIndex(keylets);
-            return true;
+            super.bindKeylets(keylets, bindToKey);
+
+            //When a value is set, we skip indexing
+            if (bindToKey) return;
+
+            for (const keylet of keylets)
+            {
+                const keyletIndexKey = keyIndexPrefix + keylet;
+                const existingComposites = super.get(keyletIndexKey);
+                const composite = keylets.join(keyletSeparator);
+                super.set(keyIndexPrefix + keylet, existingComposites ? (existingComposites + compositeSeparator + composite) : composite);
+            }
         }
 
-        interceptDelete(keylets: string[]): boolean
+        releaseKeylets(keylets: string[], releaseFromKey?: string[]): void
         {
-            const itemWasDeleted = super.interceptDelete(keylets);
-            if (itemWasDeleted) this.removeFromIndex(keylets);
-            return itemWasDeleted;
+            super.releaseKeylets(keylets, releaseFromKey);
+
+            //When a value is set, we skip indexing
+            if (releaseFromKey) return;
+
+            for (const keylet of keylets)
+            {
+                const keyletIndexKey = keyIndexPrefix + keylet;
+                const composite = keylets.join(keyletSeparator);
+                const remainingComposites = super.get(keyletIndexKey).split(compositeSeparator).filter(c => c !== composite).join(compositeSeparator);
+
+                if (!remainingComposites) super.delete(keyletIndexKey);
+            }
         }
 
         queryKeysMatching(keyTemplate: any): MapQueryResult<K, V>[]
@@ -91,29 +110,6 @@ export function QueryableKeys(Base: new () => AssociationContainer)
             }
 
             return results;
-        }
-
-        addToIndex(keylets: string[])
-        {
-            for (const keylet of keylets)
-            {
-                const keyletIndexKey = keyIndexPrefix + keylet;
-                const existingComposites = super.get(keyletIndexKey);
-                const composite = keylets.join(keyletSeparator);
-                super.set(keyIndexPrefix + keylet, existingComposites ? (existingComposites + compositeSeparator + composite) : composite);
-            }
-        }
-
-        removeFromIndex(keylets: string[])
-        {
-            for (const keylet of keylets)
-            {
-                const keyletIndexKey = keyIndexPrefix + keylet;
-                const composite = keylets.join(keyletSeparator);
-                const remainingComposites = super.get(keyletIndexKey).split(compositeSeparator).filter(c => c !== composite).join(compositeSeparator);
-
-                if (!remainingComposites) super.delete(keyletIndexKey);
-            }
         }
     }
 
