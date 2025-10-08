@@ -17,14 +17,40 @@ import type {
     ValueQueryAPI
 } from "./mixins/interfaces.ts";
 
-export function AssociativeMap(
-    KeyType: typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex,
-    KeyQueryability: typeof NonqueryableKeys | typeof QueryableKeys,
-    ValueType: typeof RawValued | typeof ArrayValued | typeof SetValued,
-    ValueQueryability: typeof NonqueryableValues | typeof QueryableValues
-)
+export function AssociativeMap<
+    KeyMixin extends typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex,
+    KeyQueryMixin extends typeof NonqueryableKeys | typeof QueryableKeys,
+    ValueMixin extends typeof RawValued | typeof ArrayValued | typeof SetValued,
+    ValueQueryMixin extends typeof NonqueryableValues | typeof QueryableValues
+>(
+    KeyType: KeyMixin,
+    KeyQueryability: KeyQueryMixin,
+    ValueType: ValueMixin,
+    ValueQueryability: ValueQueryMixin
+): new <K, V>()
+        =>
+        Map<K, V>
+        &
+        KeyIndexingAPI
+        &
+        (KeyQueryMixin extends typeof QueryableKeys ?
+            (KeyMixin extends typeof OrderedIndex ? OrderedQueryableKeysAPI<K[], K, V> :
+                KeyMixin extends typeof StructuredIndex ? StructuredQueryableKeysAPI<Record<string, K>, K, V> :
+                KeyMixin extends typeof UnorderedIndex ? UnorderedQueryableKeysAPI<K[], K, V> :
+                never) :
+            KeyQueryAPI)
+        &
+        (ValueMixin extends typeof ArrayValued ? ArrayValuedAPI<K, V> :
+            ValueMixin extends typeof SetValued ? SetValuedAPI<K, V> :
+            ValueIndexingAPI)
+        &
+        (ValueQueryMixin extends typeof QueryableValues ?
+            ValueMixin extends typeof RawValued ? QueryableValuesAPI<K[], K, V> :
+            ValueMixin extends (typeof SetValued | typeof ArrayValued) ? QueryableCollectionValuesAPI<K, V, V[]> :
+            {} :
+            ValueQueryAPI)
 {
-    return class AssociativeMap<K, V> extends KeyQueryability(KeyType(ValueQueryability(ValueType(AssociationContainer))))
+    return class AssociativeMap<K, V> extends (KeyQueryability(KeyType(ValueQueryability(ValueType(AssociationContainer)))) as new () => AssociationContainer)
     {
         set(key: K, value: any)
         {
@@ -52,26 +78,5 @@ export function AssociativeMap(
             if (!keylets) return false;
             return super._interceptDelete(keylets);
         }
-    } as unknown as new <K, V>()
-            =>
-            Map<K, V>
-            &
-            KeyIndexingAPI
-            &
-            (typeof KeyQueryability extends typeof QueryableKeys ?
-                (typeof KeyType extends typeof OrderedIndex ? OrderedQueryableKeysAPI<K[], K, V> :
-                    typeof KeyType extends typeof StructuredIndex ? StructuredQueryableKeysAPI<Record<string, K>, K, V> :
-                    typeof KeyType extends typeof UnorderedIndex ? UnorderedQueryableKeysAPI<K[], K, V> :
-                    never) :
-                KeyQueryAPI)
-            &
-            (typeof ValueType extends typeof ArrayValued ? ArrayValuedAPI<K, V> :
-                typeof ValueType extends typeof SetValued ? SetValuedAPI<K, V> :
-                ValueIndexingAPI)
-            &
-            (typeof ValueQueryability extends typeof QueryableValues ?
-                typeof ValueType extends typeof RawValued ? QueryableValuesAPI<K[], K, V> :
-                typeof ValueType extends (typeof SetValued | typeof ArrayValued) ? QueryableCollectionValuesAPI<K, V, V[]> :
-                {} :
-                ValueQueryAPI);
+    } as any;
 }

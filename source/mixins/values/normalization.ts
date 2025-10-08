@@ -1,22 +1,27 @@
 import { collectionSizePrefix, compositeSeparator, keyletSeparator } from "../../constants.ts";
 import type { AssociationContainer } from "../base/associationContainer.ts";
-import type { ValueIndexType } from "../interfaces.ts";
+import { ValueIndexType } from "../interfaces.ts";
 
 export function RawValued(Base: new(...args: any[]) => AssociationContainer)
 {
-    return class RawValued extends Base
+    class RawValued extends Base
     {
-        valueIndexType: ValueIndexType.None;
+        static readonly kind = "RawValued" as const;
+        declare valueIndexType: ValueIndexType;
     };
+
+    RawValued.prototype.valueIndexType = ValueIndexType.None;
+    return RawValued;
 }
 
-export function ArrayValued(Base: new(...args: any[]) => AssociationContainer)
+export function ArrayValued(Base: new (...args: any[]) => AssociationContainer)
 {
     //We basically just save everything as a string of | separated keylets: $a_b_c => b|d|f|f|e|m
     //We also keep track of size: !a_b_c => 6
-    return class ArrayValued extends Base
+    class ArrayValued extends Base
     {
-        valueIndexType: ValueIndexType.Array;
+        static readonly kind = "ArrayValued" as const;
+        declare valueIndexType: ValueIndexType;
 
         _encodeValue(value: any[])
         {
@@ -208,13 +213,17 @@ export function ArrayValued(Base: new(...args: any[]) => AssociationContainer)
             return newLength;
         }
     };
+
+    ArrayValued.prototype.valueIndexType = ValueIndexType.Array;
+    return ArrayValued;
 }
 
-export function SetValued(Base: new(...args: any[]) => AssociationContainer)
+export function SetValued(Base: new (...args: any[]) => AssociationContainer)
 {
-    return class SetValued extends Base
+    class SetValued extends Base
     {
-        valueIndexType: ValueIndexType.Set;
+        static readonly kind = "SetValued" as const;
+        declare valueIndexType: ValueIndexType;
 
         _encodeValue(value: Set<any>): string[]
         {
@@ -349,4 +358,7 @@ export function SetValued(Base: new(...args: any[]) => AssociationContainer)
             return newSize;
         }
     };
+
+    SetValued.prototype.valueIndexType = ValueIndexType.Set;
+    return SetValued;
 }

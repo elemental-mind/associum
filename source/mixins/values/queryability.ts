@@ -6,14 +6,21 @@ import { decrementUInt, encodeUIntToASCII, incrementUInt, isOne } from "asciinum
 
 export function NonqueryableValues(Base: new (...args: any[]) => AssociationContainer)
 {
-    Base.prototype.valuesQueryable = false;
-    return Base;
+    class NonqueryableValues extends Base
+    {
+        static readonly kind = "NonqueryableValues" as const;
+        declare valuesQueryable: boolean;
+    }
+
+    NonqueryableValues.prototype.valuesQueryable = false;
+    return NonqueryableValues;
 }
 
 export function QueryableValues(Base: new (...args: any[]) => AssociationContainer)
 {
     class QueryableKeys extends Base
     {
+        static readonly kind = "QueryableValues" as const;
         declare valuesQueryable: boolean;
 
         //We need to save value use to an index

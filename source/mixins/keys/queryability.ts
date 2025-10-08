@@ -5,14 +5,21 @@ import type { MapQueryResult } from "../interfaces.ts";
 
 export function NonqueryableKeys(Base: new (...args: any[]) => AssociationContainer)
 {
-    Base.prototype.keysQueryable = false;
-    return Base;
+    class NonqueryableKeys extends Base
+    {
+        static readonly kind = "NonqueryableKeys" as const;
+        declare keysQueryable: boolean;
+    }
+
+    NonqueryableKeys.prototype.keysQueryable = false;
+    return NonqueryableKeys;
 }
 
 export function QueryableKeys(Base: new (...args: any[]) => AssociationContainer)
 {
     class QueryableKeys extends Base
     {
+        static readonly kind = "QueryableKeys" as const;
         declare keysQueryable: boolean;
 
         _bindKeylets(keylets: string[], bindToKey?: string[]): void

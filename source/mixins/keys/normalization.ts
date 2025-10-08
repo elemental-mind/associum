@@ -5,6 +5,7 @@ export function OrderedIndex(Base: new(...args: any[]) => AssociationContainer)
 {
     return class OrderedIndex extends Base
     {
+        static readonly kind = "OrderedIndex" as const;
         keyIndexType = KeyIndexType.Ordered;
 
         _interceptSet(keylets: string[], value: any): boolean
@@ -79,6 +80,7 @@ export function UnorderedIndex(Base: new(...args: any[]) => AssociationContainer
 {
     return class UnorderedIndex extends OrderedIndex(Base)
     {
+        static readonly kind = "UnorderedIndex" as const;
         keyIndexType = KeyIndexType.Unordered;
 
         _encodeSettingKey(key: any[]): string[] | undefined
@@ -99,6 +101,7 @@ export function StructuredIndex(Base: new(...args: any[]) => AssociationContaine
 {
     return class StructuredIndex extends OrderedIndex(Base)
     {
+        static readonly kind = "StructuredIndex" as const;
         keyIndexType = KeyIndexType.Structured;
 
         fieldCount = 0;
