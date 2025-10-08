@@ -3,107 +3,107 @@ import { AlphaNumeric } from "identigenium/sets";
 import { keyletSeparator, keyletUseCountPrefix, keyValuePrefix, stringEscapePrefix } from "../../constants.ts";
 import type { AssociationAPI, InterceptionAPI, KeyNormalizationAPI, ValueNormalizationAPI } from "../interfaces.ts";
 
-export class AssociationContainer extends Map<any, any> implements InterceptionAPI, KeyNormalizationAPI<any>, ValueNormalizationAPI<any>, AssociationAPI
+export class AssociationContainer extends Map implements InterceptionAPI, KeyNormalizationAPI, ValueNormalizationAPI, AssociationAPI
 {
-    idProvider = new IDProvider(AlphaNumeric);
-    mappingsCount = 0;
+    _idProvider = new IDProvider(AlphaNumeric);
+    _mappingsCount = 0;
 
     get size()
     {
-        return this.mappingsCount;
+        return this._mappingsCount;
     }
 
-    interceptSet(keylets: string[], value: any): boolean
+    _interceptSet(keylets: string[], value: any): boolean
     {
         const previousSize = super.size;
         super.set(keyValuePrefix + keylets.join(keyletSeparator), value);
         if (super.size === previousSize) return false;
-        this.mappingsCount++;
+        this._mappingsCount++;
         return true;
     }
 
-    interceptGet(keylets: string[])
+    _interceptGet(keylets: string[])
     {
         return super.get(keyValuePrefix + keylets.join(keyletSeparator));
     }
 
-    interceptHas(keylets: string[])
+    _interceptHas(keylets: string[])
     {
         return super.has(keyValuePrefix + keylets.join(keyletSeparator));
     }
 
-    interceptDelete(keylets: string[])
+    _interceptDelete(keylets: string[])
     {
         const itemWasDeleted = super.delete(keyValuePrefix + keylets.join(keyletSeparator));
-        if (itemWasDeleted) this.mappingsCount--;
+        if (itemWasDeleted) this._mappingsCount--;
         return itemWasDeleted;
     }
 
-    interceptClear(): void
+    _interceptClear(): void
     {
-        this.idProvider = new IDProvider(AlphaNumeric);
-        this.mappingsCount = 0;
+        this._idProvider = new IDProvider(AlphaNumeric);
+        this._mappingsCount = 0;
         super.clear();
     }
 
-    interceptKeys()
+    _interceptKeys()
     {
         return super.keys();
     };
 
-    interceptEntries()
+    _interceptEntries()
     {
         return super.entries();
     };
 
-    interceptValues()
+    _interceptValues()
     {
         return super.values();
     };
 
-    encodeSettingKey(key: any): string[]
+    _encodeSettingKey(key: any): string[]
     {
         return key;
     }
 
-    encodeRetrievalKey(key: any): string[]
+    _encodeRetrievalKey(key: any): string[]
     {
         return key;
     }
 
-    encodeQueryKey(key: unknown[] | Partial<any>, keylets: string[], matchIndices: number[]): boolean
+    _encodeQueryKey(key: unknown[] | Partial<any>, keylets: string[], matchIndices: number[]): boolean
     {
         throw new Error("Key Queries not supported");
     }
 
-    decodeKey(keylets: string[])
+    _decodeKey(keylets: string[])
     {
         throw new Error("Method not implemented.");
     }
 
-    encodeValue(value: any): any
+    _encodeValue(value: any): any
     {
         return value;
     }
 
-    decodeValue(keyletsOrValue: any)
+    _decodeValue(keyletsOrValue: any)
     {
         return keyletsOrValue;
     }
 
-    toKeylet(value: any, createIfMissing: true): string;
-    toKeylet(value: any, createIfMissing?: false): string | undefined;
-    toKeylet(value: any, createIfMissing = false): string | undefined
+    _toKeylet(value: any, createIfMissing: true): string;
+    _toKeylet(value: any, createIfMissing?: false): string | undefined;
+    _toKeylet(value: any, createIfMissing = false): string | undefined
     {
         const normalizedKeyletAccessor = typeof value === "string" ? stringEscapePrefix + value : value;
 
         const currentKeylet = super.get(normalizedKeyletAccessor);
         if (currentKeylet)
-            return currentKeylet;
+            return currentKeylet as string;
 
         if (createIfMissing)
         {
-            const newKeylet = this.idProvider.generateID();
+            const newKeylet = this._idProvider.generateID();
             super.set(normalizedKeyletAccessor, newKeylet);
             super.set(newKeylet, value);
             super.set(keyletUseCountPrefix + newKeylet, 0);
@@ -111,26 +111,26 @@ export class AssociationContainer extends Map<any, any> implements InterceptionA
         }
     }
 
-    fromKeylet(keylet: any): any | undefined
+    _fromKeylet(keylet: any): any | undefined
     {
         return super.get(keylet);
     }
 
-    bindKeylets(keylets: string[], bindToKey?: string[])
+    _bindKeylets(keylets: string[], bindToKey?: string[])
     {
         for (const keylet of keylets)
         {
             const keyletCountAccessor = keyletUseCountPrefix + keylet;
-            super.set(keyletCountAccessor, super.get(keyletCountAccessor)! + 1);
+            super.set(keyletCountAccessor, (super.get(keyletCountAccessor)! as number) + 1);
         }
     }
 
-    releaseKeylets(keylets: string[], releaseFromKey?: string[])
+    _releaseKeylets(keylets: string[], releaseFromKey?: string[])
     {
         for (const keylet of keylets)
         {
             const keyletCountAccessor = keyletUseCountPrefix + keylet;
-            const currentCount = super.get(keyletCountAccessor)!;
+            const currentCount = super.get(keyletCountAccessor)! as number;
 
             if (currentCount > 1) 
             {

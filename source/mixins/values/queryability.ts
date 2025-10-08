@@ -4,23 +4,23 @@ import type { MapQueryResult } from "../interfaces.ts";
 import { StringListIntersector } from "../../helpers/intersection.ts";
 import { decrementUInt, encodeUIntToASCII, incrementUInt, isOne } from "asciinumerium";
 
-export function NonqueryableValues(Base: new () => AssociationContainer)
+export function NonqueryableValues(Base: new (...args: any[]) => AssociationContainer)
 {
     Base.prototype.valuesQueryable = false;
     return Base;
 }
 
-export function QueryableValues(Base: new () => AssociationContainer)
+export function QueryableValues(Base: new (...args: any[]) => AssociationContainer)
 {
-    class QueryableKeys<K, V> extends Base
+    class QueryableKeys extends Base
     {
         declare valuesQueryable: boolean;
 
         //We need to save value use to an index
         //Value index looks like: |<key>#<usageCount>|<key>#<usageCount>|...
-        bindKeylets(keylets: string[], bindToKey?: string[]): void
+        _bindKeylets(keylets: string[], bindToKey?: string[]): void
         {
-            super.bindKeylets(keylets);
+            super._bindKeylets(keylets);
 
             if (!bindToKey) return;
 
@@ -37,7 +37,7 @@ export function QueryableValues(Base: new () => AssociationContainer)
                     modifiedRegistry = existingKeyletRegister + keyEntry + encodeUIntToASCII(1);
                 else
                 {
-                    const [keyCounterStartInclusive, keyCounterEndExclusive] = this.findCounterRange(existingKeyletRegister, keyPosition, keyEntry);
+                    const [keyCounterStartInclusive, keyCounterEndExclusive] = this._findCounterRange(existingKeyletRegister, keyPosition, keyEntry);
                     modifiedRegistry = incrementUInt(existingKeyletRegister, keyCounterStartInclusive, keyCounterEndExclusive);
                 }
 
@@ -45,9 +45,9 @@ export function QueryableValues(Base: new () => AssociationContainer)
             }
         }
 
-        releaseKeylets(keylets: string[], releaseFromKey?: string[]): void
+        _releaseKeylets(keylets: string[], releaseFromKey?: string[]): void
         {
-            super.releaseKeylets(keylets);
+            super._releaseKeylets(keylets);
 
             if (!releaseFromKey) return;
 
@@ -61,7 +61,7 @@ export function QueryableValues(Base: new () => AssociationContainer)
 
                 let modifiedRegistry: string;
 
-                const [keyCounterStartInclusive, keyCounterEndExclusive] = this.findCounterRange(existingKeyletRegister, keyPosition, keyEntry);
+                const [keyCounterStartInclusive, keyCounterEndExclusive] = this._findCounterRange(existingKeyletRegister, keyPosition, keyEntry);
                 if (isOne(existingKeyletRegister, keyCounterStartInclusive, keyCounterEndExclusive))
                 {
                     modifiedRegistry = modifiedRegistry.substring(0, keyPosition) + modifiedRegistry.substring(keyCounterEndExclusive);
@@ -82,15 +82,15 @@ export function QueryableValues(Base: new () => AssociationContainer)
             }
         }
 
-        queryValuesContaining(keyTemplate: any): MapQueryResult<K, V>[]
+        queryValuesContaining(keyTemplate: any): MapQueryResult<any, any>[]
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
 
-            if (!this.encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
+            if (!this._encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
 
             const alreadyChecked = new Set<string>();
-            const results: MapQueryResult<K, V>[] = [];
+            const results: MapQueryResult<any, any>[] = [];
 
             for (const index of indicesThatNeedToMatch)
             {
@@ -110,8 +110,8 @@ export function QueryableValues(Base: new () => AssociationContainer)
 
                     if (indicesThatNeedToMatch.every(matchIndex => compositeKeylets[matchIndex] === keylets[matchIndex]))
                         results.push({
-                            key: this.decodeKey(compositeKeylets) as K,
-                            value: this.decodeValue(super.get(keyValuePrefix + keyStr)) as V
+                            key: this._decodeKey(compositeKeylets),
+                            value: this._decodeValue(super.get(keyValuePrefix + keyStr))
                         });
                 }
             }
@@ -119,12 +119,12 @@ export function QueryableValues(Base: new () => AssociationContainer)
             return results;
         }
 
-        queryValuesMatching(keys: any[]): MapQueryResult<K, V>[]
+        queryValuesMatching(keys: any[]): MapQueryResult<any, any>[]
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
 
-            if (!this.encodeQueryKey(keys, keylets, indicesThatNeedToMatch)) return [];
+            if (!this._encodeQueryKey(keys, keylets, indicesThatNeedToMatch)) return [];
 
             // Inline findCompositesContainingAllOf
             const intersector = new StringListIntersector();
@@ -148,20 +148,20 @@ export function QueryableValues(Base: new () => AssociationContainer)
 
             const keyStrs = intersector.computeIntersection();
 
-            const results: MapQueryResult<K, V>[] = [];
+            const results: MapQueryResult<any, any>[] = [];
             for (const keyStr of keyStrs)
             {
                 const compositeKeylets = keyStr.split(keyletSeparator);
                 results.push({
-                    key: this.decodeKey(compositeKeylets) as K,
-                    value: this.decodeValue(super.get(keyValuePrefix + keyStr)) as V
+                    key: this._decodeKey(compositeKeylets),
+                    value: this._decodeValue(super.get(keyValuePrefix + keyStr))
                 });
             }
 
             return results;
         }
 
-        findCounterRange(existingKeyletRegister: string, keyPosition: number, keyEntry: string): [number, number]
+        _findCounterRange(existingKeyletRegister: string, keyPosition: number, keyEntry: string): [number, number]
         {
             const keyCounterStartInclusive = keyPosition + keyEntry.length;
             let keyCounterEndExclusive = existingKeyletRegister.indexOf(compositeSeparator, keyCounterStartInclusive);

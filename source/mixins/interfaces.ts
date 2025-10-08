@@ -1,39 +1,37 @@
 export interface AssociationAPI
 {
-    toKeylet(value: any, createIfMissing: true): string;
-    toKeylet(value: any, createIfMissing?: false): string | undefined;
-    fromKeylet(keylet: any): string | undefined;
+    _toKeylet(value: any, createIfMissing: true): string;
+    _toKeylet(value: any, createIfMissing?: false): string | undefined;
+    _fromKeylet(keylet: any): string | undefined;
 
-    bindKeylets(keylets: string[]): void;
-    releaseKeylets(keylets: string[]): void;
+    _bindKeylets(keylets: string[]): void;
+    _releaseKeylets(keylets: string[]): void;
 }
 
 export interface InterceptionAPI
 {
-    interceptSet(normalizedKey: string[], normalizedValue: string[]): boolean;
-    interceptGet(normalizedKey: string[]): any;
-    interceptHas(normalizedKey: string[]): boolean;
-    interceptDelete(normalizedKey: string[]): boolean;
-    interceptClear(): void;
-    interceptKeys(): IterableIterator<any>;
-    interceptEntries(): IterableIterator<[any, any]>;
-    interceptValues(): IterableIterator<any>;
+    _interceptSet(normalizedKey: string[], normalizedValue: string[]): boolean;
+    _interceptGet(normalizedKey: string[]): any;
+    _interceptHas(normalizedKey: string[]): boolean;
+    _interceptDelete(normalizedKey: string[]): boolean;
+    _interceptClear(): void;
+    _interceptKeys(): IterableIterator<any>;
+    _interceptEntries(): IterableIterator<[any, any]>;
+    _interceptValues(): IterableIterator<any>;
 }
 
-export interface KeyNormalizationAPI<K>
+export interface KeyNormalizationAPI
 {
-    encodeSettingKey(key: K): string[];
-    encodeRetrievalKey(key: K): string[];
-    encodeQueryKey(key: K extends Array<infer S> ? (S | undefined)[] : Partial<K>, keylets: string[], matchIndices: number[]): boolean;
-
-    decodeKey(keylets: string[]): any;
+    _encodeSettingKey(key: any): string[];
+    _encodeRetrievalKey(key: any): string[];
+    _encodeQueryKey(key: any extends Array<infer S> ? (S | undefined)[] : Partial<any>, keylets: string[], matchIndices: number[]): boolean;
+    _decodeKey(keylets: string[]): any;
 }
 
-export interface ValueNormalizationAPI<V>
+export interface ValueNormalizationAPI
 {
-    encodeValue(value: V): string[];
-
-    decodeValue(keylets: string[]): any;
+    _encodeValue(value: any): string[];
+    _decodeValue(keylets: string[]): any;
 }
 
 export interface MapQueryResult<K, V>
@@ -85,6 +83,27 @@ export enum ValueIndexType
 export interface ValueIndexingAPI
 {
     readonly valueIndexType: ValueIndexType;
+}
+
+export interface ArrayValuedAPI<K, V> extends ValueIndexingAPI
+{
+    push(key: K, ...items: V[]): number;
+    unshift(key: K, ...items: V[]): number;
+    pop(key: K): V | undefined;
+    shift(key: K): V | undefined;
+    splice(key: K, start: number, deleteCount?: number, ...addedItems: V[]): V[];
+    purge(key: K, item: V, occurence: "First" | "Last" | "All"): boolean;
+    length(key: K): number | undefined;
+}
+
+export interface SetValuedAPI<K, V> extends ValueIndexingAPI
+{
+    fillSet(key: K, items: V[]): void;
+    addToSet(key: K, item: V): boolean;
+    deleteFromSet(key: K, item: V): boolean;
+    hasInSet(key: K, item: V): boolean;
+    clearSet(key: K): void;
+    sizeOfSet(key: K): number | undefined;
 }
 
 export interface ValueQueryAPI

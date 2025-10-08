@@ -3,21 +3,21 @@ import { StringListIntersector } from "../../helpers/intersection.ts";
 import type { AssociationContainer } from "../base/associationContainer.ts";
 import type { MapQueryResult } from "../interfaces.ts";
 
-export function NonqueryableKeys(Base: new () => AssociationContainer)
+export function NonqueryableKeys(Base: new (...args: any[]) => AssociationContainer)
 {
     Base.prototype.keysQueryable = false;
     return Base;
 }
 
-export function QueryableKeys(Base: new () => AssociationContainer)
+export function QueryableKeys(Base: new (...args: any[]) => AssociationContainer)
 {
-    class QueryableKeys<K, V> extends Base
+    class QueryableKeys extends Base
     {
         declare keysQueryable: boolean;
 
-        bindKeylets(keylets: string[], bindToKey?: string[]): void
+        _bindKeylets(keylets: string[], bindToKey?: string[]): void
         {
-            super.bindKeylets(keylets, bindToKey);
+            super._bindKeylets(keylets, bindToKey);
 
             //When a value is set, we skip indexing
             if (bindToKey) return;
@@ -31,9 +31,9 @@ export function QueryableKeys(Base: new () => AssociationContainer)
             }
         }
 
-        releaseKeylets(keylets: string[], releaseFromKey?: string[]): void
+        _releaseKeylets(keylets: string[], releaseFromKey?: string[]): void
         {
-            super.releaseKeylets(keylets, releaseFromKey);
+            super._releaseKeylets(keylets, releaseFromKey);
 
             //When a value is set, we skip indexing
             if (releaseFromKey) return;
@@ -48,15 +48,15 @@ export function QueryableKeys(Base: new () => AssociationContainer)
             }
         }
 
-        queryKeysMatching(keyTemplate: any): MapQueryResult<K, V>[]
+        queryKeysMatching(keyTemplate: any): MapQueryResult<any, any>[]
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
 
-            if (!this.encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
+            if (!this._encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
 
             const alreadyChecked = new Set<string>();
-            const results: MapQueryResult<K, V>[] = [];
+            const results: MapQueryResult<any, any>[] = [];
 
             for (const index of indicesThatNeedToMatch)
             {
@@ -72,8 +72,8 @@ export function QueryableKeys(Base: new () => AssociationContainer)
 
                     if (indicesThatNeedToMatch.every(matchIndex => compositeKeylets[matchIndex] === keylets[matchIndex]))
                         results.push({
-                            key: this.decodeKey(compositeKeylets) as K,
-                            value: this.decodeValue(super.get(keyValuePrefix + composite)) as V
+                            key: this._decodeKey(compositeKeylets),
+                            value: this._decodeValue(super.get(keyValuePrefix + composite))
                         });
                 }
             }
@@ -81,12 +81,12 @@ export function QueryableKeys(Base: new () => AssociationContainer)
             return results;
         }
 
-        queryKeysIndexedWith(keys: any[]): MapQueryResult<K, V>[]
+        queryKeysIndexedWith(keys: any[]): MapQueryResult<any, any>[]
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
 
-            if (!this.encodeQueryKey(keys, keylets, indicesThatNeedToMatch)) return [];
+            if (!this._encodeQueryKey(keys, keylets, indicesThatNeedToMatch)) return [];
 
             // Inline findCompositesContainingAllOf
             const intersector = new StringListIntersector();
@@ -104,8 +104,8 @@ export function QueryableKeys(Base: new () => AssociationContainer)
             {
                 const compositeKeylets = composite.split(keyletSeparator);
                 results.push({
-                    key: this.decodeKey(compositeKeylets) as K,
-                    value: super.interceptGet(compositeKeylets) as V
+                    key: this._decodeKey(compositeKeylets),
+                    value: super._interceptGet(compositeKeylets)
                 });
             }
 

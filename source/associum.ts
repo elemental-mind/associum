@@ -1,25 +1,21 @@
 import { AssociativeMap } from "./associativeMap.ts";
+import { AssociationContainer } from "./mixins/base/associationContainer.ts";
 import type { KeyIndexingAPI, KeyQueryAPI, MapQueryResult, OrderedQueryableKeysAPI, StructuredQueryableKeysAPI, UnorderedQueryableKeysAPI } from "./mixins/interfaces.ts";
 import { OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/keys/normalization.ts";
 import { NonqueryableKeys, QueryableKeys } from "./mixins/keys/queryability.ts";
+import { RawValued } from "./mixins/values/normalization.ts";
+import { QueryableValues } from "./mixins/values/queryability.ts";
 
-export type { MapQueryResult };
-export const UnorderedMultiKeyMap = AssociativeMap(UnorderedIndex, NonqueryableKeys) as new <K extends any[], V>() =>
-    (Map<K, V> & KeyIndexingAPI & KeyQueryAPI);
-export const OrderedMultiKeyMap = AssociativeMap(OrderedIndex, NonqueryableKeys) as new <K extends any[], V>() =>
-    (Map<K, V> & KeyIndexingAPI & KeyQueryAPI);
-export const StructuredMultiKeyMap = AssociativeMap(StructuredIndex, NonqueryableKeys) as new <K extends Record<string, any>, V>() =>
-    (Map<K, V> & KeyIndexingAPI & KeyQueryAPI);
+const SampleComposition = AssociativeMap(UnorderedIndex, QueryableKeys, RawValued, QueryableValues);
+const test = new SampleComposition<string, number>();
 
-export const QueryableUnorderedMultiKeyMap = AssociativeMap(UnorderedIndex, QueryableKeys) as unknown as new <K extends any[], V>() =>
-    K extends (infer E)[]
-    ? (Map<K, V> & KeyIndexingAPI & UnorderedQueryableKeysAPI<K, E, V>)
-    : never;
-export const QueryableOrderedMultiKeyMap = AssociativeMap(OrderedIndex, QueryableKeys) as unknown as new <K extends any[], V>() =>
-    K extends (infer E)[]
-    ? (Map<K, V> & KeyIndexingAPI & OrderedQueryableKeysAPI<K, E, V>)
-    : never;
-export const QueryableStructuredMultiKeyMap = AssociativeMap(StructuredIndex, QueryableKeys) as unknown as new <K extends Record<string, any>, V>() =>
-    K extends Record<string, infer E>
-    ? (Map<K, V> & KeyIndexingAPI & StructuredQueryableKeysAPI<K, E, V>)
-    : never;
+
+
+function TypedReturn<T extends typeof OrderedIndex | typeof UnorderedIndex>(
+    param: T
+) : T extends typeof OrderedIndex ? string : number
+{
+    return {} as any;
+}
+
+const something = TypedReturn(UnorderedIndex);

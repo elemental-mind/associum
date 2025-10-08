@@ -2,7 +2,7 @@ import { collectionSizePrefix, compositeSeparator, keyletSeparator } from "../..
 import type { AssociationContainer } from "../base/associationContainer.ts";
 import type { ValueIndexType } from "../interfaces.ts";
 
-export function RawValued(Base: new () => AssociationContainer)
+export function RawValued(Base: new(...args: any[]) => AssociationContainer)
 {
     return class RawValued extends Base
     {
@@ -10,81 +10,81 @@ export function RawValued(Base: new () => AssociationContainer)
     };
 }
 
-export function ArrayValued(Base: new () => AssociationContainer)
+export function ArrayValued(Base: new(...args: any[]) => AssociationContainer)
 {
     //We basically just save everything as a string of | separated keylets: $a_b_c => b|d|f|f|e|m
     //We also keep track of size: !a_b_c => 6
-    return class ArrayValued<K, V> extends Base
+    return class ArrayValued extends Base
     {
         valueIndexType: ValueIndexType.Array;
 
-        encodeValue(value: any[])
+        _encodeValue(value: any[])
         {
             const keylets: string[] = [];
             for (const element of value)
             {
-                const keylet = super.toKeylet(element, true);
+                const keylet = super._toKeylet(element, true);
                 keylets.push(keylet);
             }
             return keylets.join(compositeSeparator);
         }
 
-        decodeValue(keylets: string)
+        _decodeValue(keylets: string)
         {
-            return keylets.split(compositeSeparator).map(keylet => super.fromKeylet(keylet));
+            return keylets.split(compositeSeparator).map(keylet => super._fromKeylet(keylet));
         }
 
-        interceptSet(keylets: string[], value: string): boolean
+        _interceptSet(keylets: string[], value: string): boolean
         {
-            const previous = super.interceptGet(keylets) as string | undefined;
+            const previous = super._interceptGet(keylets) as string | undefined;
             if (previous !== undefined)
-                this.releaseKeylets(previous.split(compositeSeparator), keylets);
+                this._releaseKeylets(previous.split(compositeSeparator), keylets);
 
-            this.bindKeylets(value.split(compositeSeparator), keylets);
-            return super.interceptSet(keylets, value);
+            this._bindKeylets(value.split(compositeSeparator), keylets);
+            return super._interceptSet(keylets, value);
         }
 
-        interceptDelete(keylets: string[]): boolean
+        _interceptDelete(keylets: string[]): boolean
         {
-            const value = super.interceptGet(keylets) as string | undefined;
+            const value = super._interceptGet(keylets) as string | undefined;
             if (value !== undefined)
-                this.releaseKeylets(value.split(compositeSeparator), keylets);
+                this._releaseKeylets(value.split(compositeSeparator), keylets);
 
-            return super.interceptDelete(keylets);
+            return super._interceptDelete(keylets);
         }
 
-        push(key: K, ...items: V[]): number
+        push(key: any, ...items: any[]): number
         {
-            const accessKeylets = this.encodeSettingKey(key);
-            const newKeylets = items.map(item => this.toKeylet(item, true));
-            this.bindKeylets(newKeylets);
+            const accessKeylets = this._encodeSettingKey(key);
+            const newKeylets = items.map(item => this._toKeylet(item, true));
+            this._bindKeylets(newKeylets);
 
-            const existingEntries = super.interceptGet(accessKeylets);
+            const existingEntries = super._interceptGet(accessKeylets);
             const appendedEntries = newKeylets.join(compositeSeparator);
 
-            super.interceptSet(accessKeylets, existingEntries ? existingEntries + compositeSeparator + appendedEntries : appendedEntries);
-            return this.adjustLength(accessKeylets, items.length);
+            super._interceptSet(accessKeylets, existingEntries ? existingEntries + compositeSeparator + appendedEntries : appendedEntries);
+            return this._adjustLength(accessKeylets, items.length);
         }
 
-        unshift(key: K, ...items: V[]): number
+        unshift(key: any, ...items: any[]): number
         {
-            const accessKeylets = this.encodeSettingKey(key);
-            const newKeylets = items.map(item => this.toKeylet(item, true));
-            this.bindKeylets(newKeylets);
+            const accessKeylets = this._encodeSettingKey(key);
+            const newKeylets = items.map(item => this._toKeylet(item, true));
+            this._bindKeylets(newKeylets);
 
-            const existingEntries = super.interceptGet(accessKeylets);
+            const existingEntries = super._interceptGet(accessKeylets);
             const appendedEntries = newKeylets.join(compositeSeparator);
 
-            super.interceptSet(accessKeylets, existingEntries ? appendedEntries + compositeSeparator + existingEntries : appendedEntries);
-            return this.adjustLength(accessKeylets, items.length);
+            super._interceptSet(accessKeylets, existingEntries ? appendedEntries + compositeSeparator + existingEntries : appendedEntries);
+            return this._adjustLength(accessKeylets, items.length);
         }
 
-        pop(key: K): V | undefined
+        pop(key: any): any | undefined
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return undefined;
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return undefined;
 
             let sliceIndex = existingEntries.lastIndexOf(compositeSeparator);
@@ -94,19 +94,19 @@ export function ArrayValued(Base: new () => AssociationContainer)
             const removedKeylet = existingEntries.slice(sliceIndex, 1)[0];
             const shortenedEntries = existingEntries.slice(0, sliceIndex);
 
-            this.adjustLength(accessKeylets, -1);
-            this.releaseKeylets([removedKeylet]);
-            super.interceptSet(accessKeylets, shortenedEntries);
+            this._adjustLength(accessKeylets, -1);
+            this._releaseKeylets([removedKeylet]);
+            super._interceptSet(accessKeylets, shortenedEntries);
 
-            return super.fromKeylet(removedKeylet);
+            return super._fromKeylet(removedKeylet);
         }
 
-        shift(key: K): V | undefined
+        shift(key: any): any | undefined
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return undefined;
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return undefined;
 
             let sliceIndex = existingEntries.indexOf(compositeSeparator);
@@ -116,45 +116,45 @@ export function ArrayValued(Base: new () => AssociationContainer)
             const removedKeylet = existingEntries.slice(0, sliceIndex);
             const shortenedEntries = existingEntries.slice(sliceIndex);
 
-            this.adjustLength(accessKeylets, -1);
-            this.releaseKeylets([removedKeylet]);
-            super.interceptSet(accessKeylets, shortenedEntries);
+            this._adjustLength(accessKeylets, -1);
+            this._releaseKeylets([removedKeylet]);
+            super._interceptSet(accessKeylets, shortenedEntries);
 
-            return super.fromKeylet(removedKeylet);
+            return super._fromKeylet(removedKeylet);
         }
 
-        splice(key: K, start: number, deleteCount?: number, ...addedItems: V[]): V[]
+        splice(key: any, start: number, deleteCount?: number, ...addedItems: any[]): any[]
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return [];
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return undefined;
 
             const existingKeylets = existingEntries.split(compositeSeparator);
-            const keyletsToAdd = addedItems.map(item => this.toKeylet(item, true));
-            this.bindKeylets(keyletsToAdd);
+            const keyletsToAdd = addedItems.map(item => this._toKeylet(item, true));
+            this._bindKeylets(keyletsToAdd);
 
             const removedKeylets = existingKeylets.splice(start, deleteCount, ...keyletsToAdd);
             //We need to save it here, as freeing the keylets may remove them from the map.
-            const removedItems = removedKeylets.map(keylet => super.fromKeylet(keylet));
+            const removedItems = removedKeylets.map(keylet => super._fromKeylet(keylet));
 
-            super.interceptSet(accessKeylets, existingKeylets);
-            this.releaseKeylets(removedKeylets);
-            this.adjustLength(accessKeylets, addedItems.length - removedKeylets.length);
+            super._interceptSet(accessKeylets, existingKeylets);
+            this._releaseKeylets(removedKeylets);
+            this._adjustLength(accessKeylets, addedItems.length - removedKeylets.length);
 
             return removedItems;
         }
 
-        purge(key: K, item: V, occurence: "First" | "Last" | "All"): boolean
+        purge(key: any, item: any, occurence: "First" | "Last" | "All"): boolean
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return false;
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return false;
 
-            const targetKeylet = this.toKeylet(item, false);
+            const targetKeylet = this._toKeylet(item, false);
             if (!targetKeylet) return false;
 
             let patchedString;
@@ -186,21 +186,21 @@ export function ArrayValued(Base: new () => AssociationContainer)
                     .join(compositeSeparator);
             }
 
-            this.adjustLength(accessKeylets, -deletedEntries);
+            this._adjustLength(accessKeylets, -deletedEntries);
             //Ok, very hacky - but it's just a proof of concept for now.
-            this.releaseKeylets(new Array(deletedEntries).fill(targetKeylet));
+            this._releaseKeylets(new Array(deletedEntries).fill(targetKeylet));
 
             return true;
         }
 
-        length(key: K)
+        length(key: any)
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return undefined;
             return super.get(collectionSizePrefix + accessKeylets.join(keyletSeparator));
         }
 
-        adjustLength(keylets: string[], lengthDiff: number)
+        _adjustLength(keylets: string[], lengthDiff: number)
         {
             const collectionCountAccessor = collectionSizePrefix + keylets.join(keyletSeparator);
             const newLength = (super.get(collectionCountAccessor) ?? 0) + lengthDiff;
@@ -210,67 +210,67 @@ export function ArrayValued(Base: new () => AssociationContainer)
     };
 }
 
-export function SetValued(Base: new () => AssociationContainer)
+export function SetValued(Base: new(...args: any[]) => AssociationContainer)
 {
-    return class SetValued<K, V> extends Base
+    return class SetValued extends Base
     {
         valueIndexType: ValueIndexType.Set;
 
-        encodeValue(value: Set<any>): string[]
+        _encodeValue(value: Set<any>): string[]
         {
             const keylets: string[] = [];
             for (const element of value)
             {
-                const keylet = super.toKeylet(element, true);
+                const keylet = super._toKeylet(element, true);
                 keylets.push(keylet);
             }
             return keylets;
         }
 
-        decodeValue(encoded: string)
+        _decodeValue(encoded: string)
         {
             const value = new Set();
             for (const keylet of encoded.split(compositeSeparator))
-                value.add(super.fromKeylet(keylet));
+                value.add(super._fromKeylet(keylet));
             return value;
         }
 
-        interceptSet(keylets: string[], value: string): boolean
+        _interceptSet(keylets: string[], value: string): boolean
         {
-            const previous = super.interceptGet(keylets) as string | undefined;
+            const previous = super._interceptGet(keylets) as string | undefined;
             if (previous !== undefined)
-                this.releaseKeylets(previous.split(compositeSeparator));
+                this._releaseKeylets(previous.split(compositeSeparator));
 
-            this.bindKeylets(value.split(compositeSeparator));
-            return super.interceptSet(keylets, value);
+            this._bindKeylets(value.split(compositeSeparator));
+            return super._interceptSet(keylets, value);
         }
 
-        interceptDelete(keylets: string[]): boolean
+        _interceptDelete(keylets: string[]): boolean
         {
-            const value = super.interceptGet(keylets) as string | undefined;
+            const value = super._interceptGet(keylets) as string | undefined;
             if (value !== undefined)
-                this.releaseKeylets(value.split(compositeSeparator));
+                this._releaseKeylets(value.split(compositeSeparator));
 
-            return super.interceptDelete(keylets);
+            return super._interceptDelete(keylets);
         }
 
-        fillSet(key: K, items: V[]): void
+        fillSet(key: any, items: any[]): void
         {
             for (const item of items)
                 this.addToSet(key, item);
         }
 
-        addToSet(key: K, item: V): boolean
+        addToSet(key: any, item: any): boolean
         {
-            const accessKeylets = this.encodeSettingKey(key);
-            const targetKeylet = this.toKeylet(item, true);
+            const accessKeylets = this._encodeSettingKey(key);
+            const targetKeylet = this._toKeylet(item, true);
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries)
             {
-                super.interceptSet(accessKeylets, targetKeylet);
-                this.bindKeylets([targetKeylet]);
-                this.adjustSize(accessKeylets, 1);
+                super._interceptSet(accessKeylets, targetKeylet);
+                this._bindKeylets([targetKeylet]);
+                this._adjustSize(accessKeylets, 1);
                 return true;
             }
 
@@ -278,21 +278,21 @@ export function SetValued(Base: new () => AssociationContainer)
             if (existingKeylets.includes(targetKeylet)) return false;
 
             existingKeylets.push(targetKeylet);
-            this.bindKeylets([targetKeylet]);
-            super.interceptSet(accessKeylets, existingKeylets.join(compositeSeparator));
-            this.adjustSize(accessKeylets, 1);
+            this._bindKeylets([targetKeylet]);
+            super._interceptSet(accessKeylets, existingKeylets.join(compositeSeparator));
+            this._adjustSize(accessKeylets, 1);
             return true;
         }
 
-        deleteFromSet(key: K, item: V): boolean
+        deleteFromSet(key: any, item: any): boolean
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return false;
 
-            const targetKeylet = this.toKeylet(item, false);
+            const targetKeylet = this._toKeylet(item, false);
             if (!targetKeylet) return false;
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return false;
 
             const existingKeylets = existingEntries.split(compositeSeparator);
@@ -300,48 +300,48 @@ export function SetValued(Base: new () => AssociationContainer)
             if (index === -1) return false;
 
             existingKeylets.splice(index, 1);
-            super.interceptSet(accessKeylets, existingKeylets.join(compositeSeparator));
-            this.adjustSize(accessKeylets, -1);
-            this.releaseKeylets([targetKeylet]);
+            super._interceptSet(accessKeylets, existingKeylets.join(compositeSeparator));
+            this._adjustSize(accessKeylets, -1);
+            this._releaseKeylets([targetKeylet]);
             return true;
         }
 
-        hasInSet(key: K, item: V): boolean
+        hasInSet(key: any, item: any): boolean
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return false;
 
-            const targetKeylet = this.toKeylet(item, false);
+            const targetKeylet = this._toKeylet(item, false);
             if (!targetKeylet) return false;
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return false;
 
             return existingEntries.split(compositeSeparator).includes(targetKeylet);
         }
 
-        clearSet(key: K): void
+        clearSet(key: any): void
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return;
 
-            const existingEntries = super.interceptGet(accessKeylets) as string;
+            const existingEntries = super._interceptGet(accessKeylets) as string;
             if (!existingEntries) return;
 
             const existingKeylets = existingEntries.split(compositeSeparator);
-            this.releaseKeylets(existingKeylets);
-            this.adjustSize(accessKeylets, -existingKeylets.length);
-            super.interceptDelete(accessKeylets);
+            this._releaseKeylets(existingKeylets);
+            this._adjustSize(accessKeylets, -existingKeylets.length);
+            super._interceptDelete(accessKeylets);
         }
 
-        sizeOfSet(key: K): number | undefined
+        sizeOfSet(key: any): number | undefined
         {
-            const accessKeylets = this.encodeRetrievalKey(key);
+            const accessKeylets = this._encodeRetrievalKey(key);
             if (!accessKeylets) return undefined;
             return super.get(collectionSizePrefix + accessKeylets.join(keyletSeparator)) ?? 0;
         }
 
-        adjustSize(keylets: string[], sizeDiff: number): number
+        _adjustSize(keylets: string[], sizeDiff: number): number
         {
             const collectionSizeAccessor = collectionSizePrefix + keylets.join(keyletSeparator);
             const newSize = (super.get(collectionSizeAccessor) ?? 0) + sizeDiff;
