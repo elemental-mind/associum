@@ -33,15 +33,14 @@ export interface ValueNormalizationAPI
     _decodeValue(keylets: string[]): any;
 }
 
-export interface MapQueryResult<K, V>
-{
+export type MapQueryResult<K, V> = Array<{
     key: K;
     value: V;
-}
+}>;
 
 export enum KeyIndexType
 {
-    None,
+    Raw,
     Unordered,
     Ordered,
     Structured,
@@ -54,17 +53,17 @@ export interface KeyQueryAPI
 
 export interface OrderedQueryableKeysAPI<TKeys, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
-    queryKeysMatching(keyTemplate: (TKey | undefined)[]): MapQueryResult<TKeys, TValue>[];
+    queryKeysMatching(keyTemplate: (TKey | undefined)[]): MapQueryResult<TKeys, TValue>;
 }
 
 export interface StructuredQueryableKeysAPI<TKeys, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
-    queryKeysMatching(keyTemplate: Partial<TKeys>): MapQueryResult<TKeys, TValue>[];
+    queryKeysMatching(keyTemplate: Partial<TKeys>): MapQueryResult<TKeys, TValue>;
 }
 
 export interface UnorderedQueryableKeysAPI<TKeys, TKey, TValue> extends KeyQueryAPI
 {
-    queryKeysIndexedWith(keys: TKey[]): MapQueryResult<TKeys, TValue>[];
+    queryKeysIndexedWith(keys: TKey[]): MapQueryResult<TKeys, TValue>;
 }
 
 export enum ValueIndexType
@@ -105,12 +104,12 @@ export interface ValueQueryAPI
     readonly valuesQueryable: boolean;
 }
 
-export interface QueryableValuesAPI<TKeys, TKey, TValue> extends ValueQueryAPI
+export interface QueryableValuesAPI<TKey, TValueContainer, TValue> extends ValueQueryAPI
 {
-    queryValuesContaining(values: TKey[]): MapQueryResult<TKeys, TValue>;
+    queryValuesContaining(values: TValue[]): MapQueryResult<TKey, TValueContainer>;
 }
 
-export interface QueryableCollectionValuesAPI<TKeys, TKey, TValue> extends QueryableValuesAPI<TKeys, TKey, TValue>
+export interface QueryableCollectionValuesAPI<TKey, TValueContainer, TValue> extends QueryableValuesAPI<TKey, TValueContainer, TValue>
 {
-    queryValuesMatching(valueTemplate: (TValue | undefined)[]): MapQueryResult<TKeys, TValue>;
+    queryValuesMatching(valueTemplate: (TValue | undefined)[]): MapQueryResult<TKey, TValueContainer>;
 }

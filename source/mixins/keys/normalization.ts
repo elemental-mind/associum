@@ -1,12 +1,24 @@
 import type { AssociationContainer } from "../base/associationContainer.ts";
 import { KeyIndexType } from "../interfaces.ts";
 
-export function OrderedIndex(Base: new(...args: any[]) => AssociationContainer)
+export function RawIndex(Base: new (...args: any[]) => AssociationContainer)
 {
-    return class OrderedIndex extends Base
+    class RawIndex extends Base
+    {
+        static readonly kind = "RawIndex" as const;
+        declare keyIndexType;
+    };
+
+    RawIndex.prototype.keyIndexType = KeyIndexType.Raw;
+    return RawIndex;
+}
+
+export function OrderedIndex(Base: new (...args: any[]) => AssociationContainer)
+{
+    class OrderedIndex extends Base
     {
         static readonly kind = "OrderedIndex" as const;
-        keyIndexType = KeyIndexType.Ordered;
+        declare keyIndexType;
 
         _interceptSet(keylets: string[], value: any): boolean
         {
@@ -74,14 +86,18 @@ export function OrderedIndex(Base: new(...args: any[]) => AssociationContainer)
             return key;
         }
     };
+
+    OrderedIndex.prototype.keyIndexType = KeyIndexType.Ordered;
+    return OrderedIndex;
 }
 
-export function UnorderedIndex(Base: new(...args: any[]) => AssociationContainer)
+export function UnorderedIndex(Base: new (...args: any[]) => AssociationContainer)
 {
-    return class UnorderedIndex extends OrderedIndex(Base)
+    //@ts-ignore
+    class UnorderedIndex extends OrderedIndex(Base)
     {
         static readonly kind = "UnorderedIndex" as const;
-        keyIndexType = KeyIndexType.Unordered;
+        declare keyIndexType;
 
         _encodeSettingKey(key: any[]): string[] | undefined
         {
@@ -95,43 +111,43 @@ export function UnorderedIndex(Base: new(...args: any[]) => AssociationContainer
             return keylets.sort();
         }
     };
+
+    UnorderedIndex.prototype.keyIndexType = KeyIndexType.Unordered;
+    return UnorderedIndex;
 }
 
-export function StructuredIndex(Base: new(...args: any[]) => AssociationContainer)
+export function StructuredIndex(Base: new (...args: any[]) => AssociationContainer)
 {
-    return class StructuredIndex extends OrderedIndex(Base)
+    //@ts-ignore
+    class StructuredIndex extends OrderedIndex(Base)
     {
         static readonly kind = "StructuredIndex" as const;
-        keyIndexType = KeyIndexType.Structured;
+        declare keyIndexType;
 
         fieldCount = 0;
         fieldMap: Record<string, number> = Object.create(null);
 
-        //@ts-ignore
-        _encodeSettingKey(key: K): string[]
+        _encodeSettingKey(key: any): string[]
         {
             const keyArray = this._keyObjectToKeyArray(key, true);
             return super._encodeSettingKey(keyArray, false);
         }
 
-        //@ts-ignore
-        _encodeRetrievalKey(key: K): string[] | undefined
+        _encodeRetrievalKey(key: any): string[] | undefined
         {
             const keyArray = this._keyObjectToKeyArray(key, false);
             if (!keyArray) return undefined;
             return super._encodeRetrievalKey(keyArray);
         }
 
-        //@ts-ignore
-        _encodeQueryKey(keyTemplate: Partial<K>, keylets: string[], matchIndices: number[]): boolean
+        _encodeQueryKey(keyTemplate: any, keylets: string[], matchIndices: number[]): boolean
         {
             const keyArray = this._keyObjectToKeyArray(keyTemplate, false);
             if (!keyArray) return false;
             super._encodeQueryKey(keyArray, keylets, matchIndices);
         }
 
-        //@ts-ignore
-        _decodeKey(keylets: string[])
+        _decodeKey(keylets: string[]): any
         {
             const keys = super._decodeKey(keylets);
             return this._keyArrayToKeyObject(keys);
@@ -179,4 +195,7 @@ export function StructuredIndex(Base: new(...args: any[]) => AssociationContaine
             return pos;
         }
     };
+
+    StructuredIndex.prototype.keyIndexType = KeyIndexType.Structured;
+    return StructuredIndex;
 }

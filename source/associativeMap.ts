@@ -2,52 +2,24 @@ import { NonqueryableKeys, QueryableKeys } from "./mixins/keys/queryability.ts";
 import { RawValued, ArrayValued, SetValued } from "./mixins/values/normalization.ts";
 import { NonqueryableValues, QueryableValues } from "./mixins/values/queryability.ts";
 import { RawIndex, UnorderedIndex, OrderedIndex, StructuredIndex } from "./mixins/keys/normalization.ts";
-import type { ArrayValuedAPI, KeyIndexType, KeyQueryAPI, OrderedQueryableKeysAPI, QueryableCollectionValuesAPI, QueryableValuesAPI, SetValuedAPI, StructuredQueryableKeysAPI, UnorderedQueryableKeysAPI, ValueIndexingAPI, ValueQueryAPI } from "./mixins/interfaces.ts";
+import type { ArrayValuedAPI, KeyQueryAPI, OrderedQueryableKeysAPI, QueryableCollectionValuesAPI, QueryableValuesAPI, SetValuedAPI, StructuredQueryableKeysAPI, UnorderedQueryableKeysAPI, ValueIndexingAPI, ValueQueryAPI } from "./mixins/interfaces.ts";
 import { AssociationContainer } from "./mixins/base/associationContainer.ts";
 
-type KeyIndexStrategy =
-    | typeof RawIndex
-    | typeof UnorderedIndex
-    | typeof OrderedIndex
-    | typeof StructuredIndex;
-
+type KeyStructureType = typeof RawIndex | typeof UnorderedIndex | typeof OrderedIndex | typeof StructuredIndex;
 type KeyQueryStrategy = typeof NonqueryableKeys | typeof QueryableKeys;
 type ValueStructureType = typeof RawValued | typeof ArrayValued | typeof SetValued;
 type ValueQueryStrategy = typeof NonqueryableValues | typeof QueryableValues;
 
-type KeyConstraint<KeyIndex extends KeyIndexStrategy> =
+type KeyConstraint<KeyIndex extends KeyStructureType> =
     KeyIndex extends typeof RawIndex ? any :
     KeyIndex extends typeof UnorderedIndex ? any[] :
     KeyIndex extends typeof OrderedIndex ? any[] :
-    KeyIndex extends typeof StructuredIndex ? Record<string, any> :
+    KeyIndex extends typeof StructuredIndex ? Record<string, any>:
     never;
 
-type ValueConstraint<ValueStructure extends ValueStructureType> =
-    ValueStructure extends typeof RawValued ? any :
-    ValueStructure extends typeof ArrayValued ? any[] :
-    ValueStructure extends typeof SetValued ? Set<any> :
-    never;
-
-type InnerValueType<ValueStructure extends ValueStructureType, V> =
-    ValueStructure extends typeof RawValued ? V :
-    ValueStructure extends typeof ArrayValued ? (V extends (infer U)[] ? U : never) :
-    ValueStructure extends typeof SetValued ? (V extends Set<infer U> ? U : never) :
-    never;
-
-type StoredValueType<ValueStructure extends ValueStructureType, V> = V;
-
-type KeyIndexAPI<Strategy extends KeyIndexStrategy> = {
-    readonly keyIndexType:
-    Strategy extends typeof RawIndex ? KeyIndexType.None :
-    Strategy extends typeof UnorderedIndex ? KeyIndexType.Unordered :
-    Strategy extends typeof OrderedIndex ? KeyIndexType.Ordered :
-    Strategy extends typeof StructuredIndex ? KeyIndexType.Structured :
-    never;
-};
-
-type KeyQueryAPI_<
+type KeyQueryExtensions<
     QueryStrategy extends KeyQueryStrategy,
-    IndexStrategy extends KeyIndexStrategy,
+    IndexStrategy extends KeyStructureType,
     K,
     V
 > =
@@ -59,13 +31,19 @@ type KeyQueryAPI_<
         KeyQueryAPI) :
     never;
 
-type ValueStructureAPI<S extends ValueStructureType, K, V> =
+type ValueConstraint<ValueStructure extends ValueStructureType> =
+    ValueStructure extends typeof RawValued ? any :
+    ValueStructure extends typeof ArrayValued ? any[] :
+    ValueStructure extends typeof SetValued ? Set<any> :
+    never;
+
+type ValueStructureExtensions<S extends ValueStructureType, K, V> =
     S extends typeof RawValued ? ValueIndexingAPI :
     S extends typeof ArrayValued ? ArrayValuedAPI<K, InnerValueType<S, V>> :
     S extends typeof SetValued ? SetValuedAPI<K, InnerValueType<S, V>> :
     never;
 
-type ValueQueryAPI_<
+type ValueQueryExtensions<
     QueryStrategy extends ValueQueryStrategy,
     Structure extends ValueStructureType,
     K,
@@ -73,48 +51,42 @@ type ValueQueryAPI_<
 > =
     QueryStrategy extends typeof NonqueryableValues ? ValueQueryAPI :
     QueryStrategy extends typeof QueryableValues ?
-    (Structure extends typeof RawValued ? QueryableValuesAPI<K, K extends any[] ? K[number] : K, V> :
-        Structure extends (typeof SetValued | typeof ArrayValued) ? QueryableCollectionValuesAPI<K, InnerValueType<Structure, V>, InnerValueType<Structure, V>[]> :
+    (Structure extends typeof RawValued ? QueryableValuesAPI<K, V, V> :
+        Structure extends (typeof SetValued | typeof ArrayValued) ? QueryableCollectionValuesAPI<K, V, InnerValueType<Structure, V>> :
         ValueQueryAPI) :
     never;
 
-type AssociativeAPI<
-    KeyIndex extends KeyIndexStrategy,
-    KeyQuery extends KeyQueryStrategy,
-    ValueStructure extends ValueStructureType,
-    ValueQuery extends ValueQueryStrategy,
-    K,
-    V
-> =
-    Map<K, StoredValueType<ValueStructure, V>>
-    & KeyIndexAPI<KeyIndex>
-    & KeyQueryAPI_<KeyQuery, KeyIndex, K, StoredValueType<ValueStructure, V>>
-    & ValueStructureAPI<ValueStructure, K, V>
-    & ValueQueryAPI_<ValueQuery, ValueStructure, K, V>;
+type InnerValueType<ValueStructure extends ValueStructureType, V> =
+    ValueStructure extends typeof RawValued ? V :
+    ValueStructure extends typeof ArrayValued ? (V extends (infer U)[] ? U : never) :
+    ValueStructure extends typeof SetValued ? (V extends Set<infer U> ? U : never) :
+    never;
 
-type ConstructorFor<
-    KeyIndex extends KeyIndexStrategy,
+type MapConstructorFor<
+    KeyType extends KeyStructureType,
     KeyQuery extends KeyQueryStrategy,
-    ValueStructure extends ValueStructureType,
+    ValueType extends ValueStructureType,
     ValueQuery extends ValueQueryStrategy
 > = new <
-    K extends KeyConstraint<KeyIndex>,
-    V extends ValueConstraint<ValueStructure>
->() => AssociativeAPI<KeyIndex, KeyQuery, ValueStructure, ValueQuery, K, V>;
+    K extends KeyConstraint<KeyType>,
+    V extends ValueConstraint<ValueType>
+>() => Map<K, V> & KeyQueryExtensions<KeyQuery, KeyType, K, V> & ValueStructureExtensions<ValueType, K, V> & ValueQueryExtensions<ValueQuery, ValueType, K, V>;
 
 export function AssociativeMap<
-    KeyIndex extends KeyIndexStrategy,
+    KeyType extends KeyStructureType,
     KeyQuery extends KeyQueryStrategy,
     ValueStructure extends ValueStructureType,
     ValueQuery extends ValueQueryStrategy
 >(
-    keyType: KeyIndex,
+    keyType: KeyType,
     keyQueryability: KeyQuery,
     valueType: ValueStructure,
     valueQueryability: ValueQuery
-): ConstructorFor<KeyIndex, KeyQuery, ValueStructure, ValueQuery>
+): MapConstructorFor<KeyType, KeyQuery, ValueStructure, ValueQuery>
 {
-    return class AssociativeMap<K, V> extends (keyQueryability(keyType(valueQueryability(valueType(AssociationContainer)))) as new () => AssociationContainer)
+    const BaseClass = keyQueryability(keyType(valueQueryability(valueType(AssociationContainer)))) as new () => AssociationContainer;
+    
+    return class AssociativeMap<K extends KeyConstraint<KeyType>, V extends ValueConstraint<ValueStructure>> extends BaseClass
     {
         set(key: K, value: any)
         {
@@ -142,5 +114,5 @@ export function AssociativeMap<
             if (!keylets) return false;
             return super._interceptDelete(keylets);
         }
-    } as any;
+    } as any as MapConstructorFor<KeyType, KeyQuery, ValueStructure, ValueQuery>;
 }
