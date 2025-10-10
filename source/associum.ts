@@ -1,10 +1,162 @@
-import { AssociativeMap } from "./associativeMap.ts";
-import { AssociationContainer } from "./mixins/base/associationContainer.ts";
-import type { KeyIndexingAPI, KeyQueryAPI, MapQueryResult, OrderedQueryableKeysAPI, StructuredQueryableKeysAPI, UnorderedQueryableKeysAPI } from "./mixins/interfaces.ts";
-import { OrderedIndex, StructuredIndex, UnorderedIndex } from "./mixins/keys/normalization.ts";
 import { NonqueryableKeys, QueryableKeys } from "./mixins/keys/queryability.ts";
-import { RawValued } from "./mixins/values/normalization.ts";
-import { QueryableValues } from "./mixins/values/queryability.ts";
+import { RawValued, ArrayValued, SetValued } from "./mixins/values/normalization.ts";
+import { NonqueryableValues, QueryableValues } from "./mixins/values/queryability.ts";
+import { RawIndex, UnorderedIndex, OrderedIndex, StructuredIndex } from "./mixins/keys/normalization.ts";
+import type { ArrayValuedAPI, KeyIndexType, KeyQueryAPI, OrderedQueryableKeysAPI, QueryableCollectionValuesAPI, QueryableValuesAPI, SetValuedAPI, StructuredQueryableKeysAPI, UnorderedQueryableKeysAPI, ValueIndexingAPI, ValueQueryAPI } from "./mixins/interfaces.ts";
 
-const SampleComposition = AssociativeMap(StructuredIndex, QueryableKeys, RawValued, QueryableValues);
-const test = new SampleComposition<string, number>();
+type KeyIndexStrategy =
+    | typeof RawIndex
+    | typeof UnorderedIndex
+    | typeof OrderedIndex
+    | typeof StructuredIndex;
+
+type KeyQueryStrategy = typeof NonqueryableKeys | typeof QueryableKeys;
+type ValueStructureType = typeof RawValued | typeof ArrayValued | typeof SetValued;
+type ValueQueryStrategy = typeof NonqueryableValues | typeof QueryableValues;
+
+type KeyConstraint<KeyIndex extends KeyIndexStrategy> =
+    KeyIndex extends typeof RawIndex ? any :
+    KeyIndex extends typeof UnorderedIndex ? any[] :
+    KeyIndex extends typeof OrderedIndex ? any[] :
+    KeyIndex extends typeof StructuredIndex ? Record<string, any> :
+    never;
+
+type ValueConstraint<ValueStructure extends ValueStructureType> =
+    ValueStructure extends typeof RawValued ? any :
+    ValueStructure extends typeof ArrayValued ? any[] :
+    ValueStructure extends typeof SetValued ? Set<any> :
+    never;
+
+type InnerValueType<ValueStructure extends ValueStructureType, V> =
+    ValueStructure extends typeof RawValued ? V :
+    ValueStructure extends typeof ArrayValued ? (V extends (infer U)[] ? U : never) :
+    ValueStructure extends typeof SetValued ? (V extends Set<infer U> ? U : never) :
+    never;
+
+type StoredValueType<ValueStructure extends ValueStructureType, V> = V;
+
+type KeyIndexAPI<Strategy extends KeyIndexStrategy> = {
+    readonly keyIndexType:
+    Strategy extends typeof RawIndex ? KeyIndexType.None :
+    Strategy extends typeof UnorderedIndex ? KeyIndexType.Unordered :
+    Strategy extends typeof OrderedIndex ? KeyIndexType.Ordered :
+    Strategy extends typeof StructuredIndex ? KeyIndexType.Structured :
+    never;
+};
+
+type KeyQueryAPI_<
+    QueryStrategy extends KeyQueryStrategy,
+    IndexStrategy extends KeyIndexStrategy,
+    K,
+    V
+> =
+    QueryStrategy extends typeof NonqueryableKeys ? KeyQueryAPI :
+    QueryStrategy extends typeof QueryableKeys ?
+    (IndexStrategy extends typeof OrderedIndex ? OrderedQueryableKeysAPI<K, K extends any[] ? K[number] : never, V> :
+        IndexStrategy extends typeof StructuredIndex ? StructuredQueryableKeysAPI<K, K extends Record<string, any> ? K[keyof K] : never, V> :
+        IndexStrategy extends typeof UnorderedIndex ? UnorderedQueryableKeysAPI<K, K extends any[] ? K[number] : never, V> :
+        KeyQueryAPI) :
+    never;
+
+type ValueStructureAPI<S extends ValueStructureType, K, V> =
+    S extends typeof RawValued ? ValueIndexingAPI :
+    S extends typeof ArrayValued ? ArrayValuedAPI<K, InnerValueType<S, V>> :
+    S extends typeof SetValued ? SetValuedAPI<K, InnerValueType<S, V>> :
+    never;
+
+type ValueQueryAPI_<
+    QueryStrategy extends ValueQueryStrategy,
+    Structure extends ValueStructureType,
+    K,
+    V
+> =
+    QueryStrategy extends typeof NonqueryableValues ? ValueQueryAPI :
+    QueryStrategy extends typeof QueryableValues ?
+    (Structure extends typeof RawValued ? QueryableValuesAPI<K, K extends any[] ? K[number] : K, V> :
+        Structure extends (typeof SetValued | typeof ArrayValued) ? QueryableCollectionValuesAPI<K, InnerValueType<Structure, V>, InnerValueType<Structure, V>[]> :
+        ValueQueryAPI) :
+    never;
+
+type AssociativeAPI<
+    KeyIndex extends KeyIndexStrategy,
+    KeyQuery extends KeyQueryStrategy,
+    ValueStructure extends ValueStructureType,
+    ValueQuery extends ValueQueryStrategy,
+    K,
+    V
+> =
+    Map<K, StoredValueType<ValueStructure, V>>
+    & KeyIndexAPI<KeyIndex>
+    & KeyQueryAPI_<KeyQuery, KeyIndex, K, StoredValueType<ValueStructure, V>>
+    & ValueStructureAPI<ValueStructure, K, V>
+    & ValueQueryAPI_<ValueQuery, ValueStructure, K, V>;
+
+type ConstructorFor<
+    KeyIndex extends KeyIndexStrategy,
+    KeyQuery extends KeyQueryStrategy,
+    ValueStructure extends ValueStructureType,
+    ValueQuery extends ValueQueryStrategy
+> = new <
+    K extends KeyConstraint<KeyIndex>,
+    V extends ValueConstraint<ValueStructure>
+>() => AssociativeAPI<KeyIndex, KeyQuery, ValueStructure, ValueQuery, K, V>;
+
+export function AssociativeMap<
+    KeyIndex extends KeyIndexStrategy,
+    KeyQuery extends KeyQueryStrategy,
+    ValueStructure extends ValueStructureType,
+    ValueQuery extends ValueQueryStrategy
+>(
+    keyIndex: KeyIndex,
+    keyQueryability: KeyQuery,
+    valueStructure: ValueStructure,
+    valueQueryability: ValueQuery
+): ConstructorFor<KeyIndex, KeyQuery, ValueStructure, ValueQuery>
+{
+    // Implementation...
+    return null as any;
+}
+
+// Example 1: Simple map with raw keys/values, no queries
+const SimpleMap = AssociativeMap(
+    RawIndex,
+    NonqueryableKeys,
+    RawValued,
+    NonqueryableValues
+);
+// Type: new <K, V>() => Map<K, V> & ...
+const m1 = new SimpleMap<string, number>();
+
+// Example 2: Array-keyed map with ordered index and queryable keys
+const ArrayKeyedMap = AssociativeMap(
+    OrderedIndex,
+    QueryableKeys,
+    RawValued,
+    NonqueryableValues
+);
+// Type: new <K extends any[], V>() => Map<K, V> & OrderedQueryableKeysAPI & ...
+const m2 = new ArrayKeyedMap<[string, number], boolean>();
+
+// Example 3: Map with array values - V must be an array type!
+const ArrayValuedMap = AssociativeMap(
+    RawIndex,
+    NonqueryableKeys,
+    ArrayValued,
+    QueryableValues
+);
+// Type: new <K, V extends any[]>() => Map<K, V> & ArrayValuedAPI<K, V[number]> & ...
+const m3 = new ArrayValuedMap<string, number[]>();
+m3.push("key", 1, 2, 3); // Works! V is number[], push takes number items
+m3.length("key"); // Returns number | undefined
+
+// Example 4: Object-keyed map with set values - V must be a Set type!
+const ComplexMap = AssociativeMap(
+    StructuredIndex,
+    QueryableKeys,
+    SetValued,
+    QueryableValues
+);
+// Type: new <K extends Record<string, any>, V extends Set<any>>() => Map<K, V> & SetValuedAPI<K, V[infer U]> & ...
+const m4 = new ComplexMap<{ id: string, name: string; }, Set<number>>();
+m4.addToSet({ id: "1", name: "Alice" }, 42); // Works! V is Set<number>, addToSet takes number items
+m4.sizeOfSet({ id: "1", name: "Alice" }); // Returns number | undefined

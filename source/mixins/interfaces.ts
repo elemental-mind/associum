@@ -3,7 +3,6 @@ export interface AssociationAPI
     _toKeylet(value: any, createIfMissing: true): string;
     _toKeylet(value: any, createIfMissing?: false): string | undefined;
     _fromKeylet(keylet: any): string | undefined;
-
     _bindKeylets(keylets: string[]): void;
     _releaseKeylets(keylets: string[]): void;
 }
@@ -24,7 +23,7 @@ export interface KeyNormalizationAPI
 {
     _encodeSettingKey(key: any): string[];
     _encodeRetrievalKey(key: any): string[];
-    _encodeQueryKey(key: any extends Array<infer S> ? (S | undefined)[] : Partial<any>, keylets: string[], matchIndices: number[]): boolean;
+    _encodeQueryKey(key: any, keylets: string[], matchIndices: number[]): boolean;
     _decodeKey(keylets: string[]): any;
 }
 
@@ -38,7 +37,7 @@ export interface MapQueryResult<K, V>
 {
     key: K;
     value: V;
-};
+}
 
 export enum KeyIndexType
 {
@@ -48,22 +47,17 @@ export enum KeyIndexType
     Structured,
 }
 
-export interface KeyIndexingAPI
-{
-    readonly keyIndexType: KeyIndexType;
-}
-
 export interface KeyQueryAPI
 {
     readonly keysQueryable: boolean;
 }
 
-export interface OrderedQueryableKeysAPI<TKeys extends TKey[], TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
+export interface OrderedQueryableKeysAPI<TKeys, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
     queryKeysMatching(keyTemplate: (TKey | undefined)[]): MapQueryResult<TKeys, TValue>[];
 }
 
-export interface StructuredQueryableKeysAPI<TKeys extends Record<string, TKey>, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
+export interface StructuredQueryableKeysAPI<TKeys, TKey, TValue> extends UnorderedQueryableKeysAPI<TKeys, TKey, TValue>
 {
     queryKeysMatching(keyTemplate: Partial<TKeys>): MapQueryResult<TKeys, TValue>[];
 }
