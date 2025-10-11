@@ -55,7 +55,7 @@ export function QueryableKeys(Base: new (...args: any[]) => AssociationContainer
             }
         }
 
-        queryKeysMatching(keyTemplate: any): MapQueryResult<any, any>[]
+        queryKeysMatching(keyTemplate: any): MapQueryResult<any, any>
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
@@ -63,7 +63,7 @@ export function QueryableKeys(Base: new (...args: any[]) => AssociationContainer
             if (!this._encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
 
             const alreadyChecked = new Set<string>();
-            const results: MapQueryResult<any, any>[] = [];
+            const results: MapQueryResult<any, any> = [];
 
             for (const index of indicesThatNeedToMatch)
             {
@@ -88,7 +88,7 @@ export function QueryableKeys(Base: new (...args: any[]) => AssociationContainer
             return results;
         }
 
-        queryKeysIndexedWith(keys: any[]): MapQueryResult<any, any>[]
+        queryKeysIndexedWith(keys: any[]): MapQueryResult<any, any>
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];

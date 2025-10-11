@@ -1,7 +1,7 @@
 import type { AssociationContainer } from "../base/associationContainer.ts";
 import { KeyIndexType } from "../interfaces.ts";
 
-export function RawIndex(Base: new (...args: any[]) => AssociationContainer)
+export function RawKeys(Base: new (...args: any[]) => AssociationContainer)
 {
     class RawIndex extends Base
     {
@@ -13,7 +13,7 @@ export function RawIndex(Base: new (...args: any[]) => AssociationContainer)
     return RawIndex;
 }
 
-export function OrderedIndex(Base: new (...args: any[]) => AssociationContainer)
+export function OrderedKeysArray(Base: new (...args: any[]) => AssociationContainer)
 {
     class OrderedIndex extends Base
     {
@@ -91,10 +91,10 @@ export function OrderedIndex(Base: new (...args: any[]) => AssociationContainer)
     return OrderedIndex;
 }
 
-export function UnorderedIndex(Base: new (...args: any[]) => AssociationContainer)
+export function UnorderedKeysArray(Base: new (...args: any[]) => AssociationContainer)
 {
     //@ts-ignore
-    class UnorderedIndex extends OrderedIndex(Base)
+    class UnorderedIndex extends OrderedKeysArray(Base)
     {
         static readonly kind = "UnorderedIndex" as const;
         declare keyIndexType;
@@ -116,10 +116,10 @@ export function UnorderedIndex(Base: new (...args: any[]) => AssociationContaine
     return UnorderedIndex;
 }
 
-export function StructuredIndex(Base: new (...args: any[]) => AssociationContainer)
+export function StructuredKeys(Base: new (...args: any[]) => AssociationContainer)
 {
     //@ts-ignore
-    class StructuredIndex extends OrderedIndex(Base)
+    class StructuredIndex extends OrderedKeysArray(Base)
     {
         static readonly kind = "StructuredIndex" as const;
         declare keyIndexType;

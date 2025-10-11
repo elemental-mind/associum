@@ -89,7 +89,7 @@ export function QueryableValues(Base: new (...args: any[]) => AssociationContain
             }
         }
 
-        queryValuesContaining(keyTemplate: any): MapQueryResult<any, any>[]
+        queryValuesContaining(keyTemplate: any): MapQueryResult<any, any>
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
@@ -97,7 +97,7 @@ export function QueryableValues(Base: new (...args: any[]) => AssociationContain
             if (!this._encodeQueryKey(keyTemplate, keylets, indicesThatNeedToMatch)) return [];
 
             const alreadyChecked = new Set<string>();
-            const results: MapQueryResult<any, any>[] = [];
+            const results: MapQueryResult<any, any> = [];
 
             for (const index of indicesThatNeedToMatch)
             {
@@ -126,7 +126,7 @@ export function QueryableValues(Base: new (...args: any[]) => AssociationContain
             return results;
         }
 
-        queryValuesMatching(keys: any[]): MapQueryResult<any, any>[]
+        queryValuesMatching(keys: any[]): MapQueryResult<any, any>
         {
             const keylets = [];
             const indicesThatNeedToMatch = [];
@@ -155,7 +155,7 @@ export function QueryableValues(Base: new (...args: any[]) => AssociationContain
 
             const keyStrs = intersector.computeIntersection();
 
-            const results: MapQueryResult<any, any>[] = [];
+            const results: MapQueryResult<any, any> = [];
             for (const keyStr of keyStrs)
             {
                 const compositeKeylets = keyStr.split(keyletSeparator);

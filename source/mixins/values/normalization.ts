@@ -2,7 +2,7 @@ import { collectionSizePrefix, compositeSeparator, keyletSeparator } from "../..
 import type { AssociationContainer } from "../base/associationContainer.ts";
 import { ValueIndexType } from "../interfaces.ts";
 
-export function RawValued(Base: new(...args: any[]) => AssociationContainer)
+export function RawValues(Base: new(...args: any[]) => AssociationContainer)
 {
     class RawValued extends Base
     {
