@@ -1,7 +1,7 @@
 import { AssociativeMap } from './associativeMap.ts';
-import { RawIndex, UnorderedIndex, OrderedIndex, StructuredIndex } from './mixins/keys/normalization.ts';
+import { RawKeys, UnorderedKeysArray, OrderedKeysArray, StructuredKeys } from './mixins/keys/normalization.ts';
 import { NonqueryableKeys, QueryableKeys } from './mixins/keys/queryability.ts';
-import { RawValued, ArrayValued, SetValued } from './mixins/values/normalization.ts';
+import { RawValues, ArrayValued, SetValued } from './mixins/values/normalization.ts';
 import { NonqueryableValues, QueryableValues } from './mixins/values/queryability.ts';
 import type { MapQueryResult } from './mixins/interfaces.ts';
 
@@ -9,7 +9,7 @@ export class KeyTypeConstraintsTests
 {
     rawIndexAllowsAnyKey()
     {
-        const RawMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const RawMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, RawValues, NonqueryableValues);
         // Valid: any key type
         const map1: InstanceType<typeof RawMapCtor> = new RawMapCtor<string, number>();
         const map2: InstanceType<typeof RawMapCtor> = new RawMapCtor<string[], number>();
@@ -18,7 +18,7 @@ export class KeyTypeConstraintsTests
 
     unorderedIndexRequiresArrayKey()
     {
-        const UnorderedMapCtor = AssociativeMap(UnorderedIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const UnorderedMapCtor = AssociativeMap(UnorderedKeysArray, NonqueryableKeys, RawValues, NonqueryableValues);
         new UnorderedMapCtor<string[], number>();
         //@ts-expect-error
         new UnorderedMapCtor<string, number>();
@@ -26,7 +26,7 @@ export class KeyTypeConstraintsTests
 
     orderedIndexRequiresArrayKey()
     {
-        const OrderedMapCtor = AssociativeMap(OrderedIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const OrderedMapCtor = AssociativeMap(OrderedKeysArray, NonqueryableKeys, RawValues, NonqueryableValues);
         new OrderedMapCtor<string[], number>();
         //@ts-expect-error
         new OrderedMapCtor<string, number>();
@@ -34,10 +34,17 @@ export class KeyTypeConstraintsTests
 
     structuredIndexRequiresObjectKey()
     {
-        const StructuredMapCtor = AssociativeMap(StructuredIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const StructuredMapCtor = AssociativeMap(StructuredKeys, NonqueryableKeys, RawValues, NonqueryableValues);
         new StructuredMapCtor<{ a: string; }, number>();
         //@ts-expect-error
         new StructuredMapCtor<string, number>();
+    }
+
+    rawIndexDoesNotAllowKeyQueryability()
+    {
+        const GoodCtor = AssociativeMap(RawKeys, NonqueryableKeys, RawValues, NonqueryableValues);
+        //@ts-expect-error
+        const BadCtor = AssociativeMap(RawKeys, QueryableKeys, RawValues, NonqueryableValues);
     }
 }
 
@@ -45,7 +52,7 @@ export class ValueTypeConstraintsTests
 {
     rawValuedAllowsAnyValue()
     {
-        const RawMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const RawMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, RawValues, NonqueryableValues);
         new RawMapCtor<string, number>();
         new RawMapCtor<string, string[]>();
         new RawMapCtor<string, Set<string>>();
@@ -53,7 +60,7 @@ export class ValueTypeConstraintsTests
 
     arrayValuedRequiresArrayValue()
     {
-        const ArrayMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, ArrayValued, NonqueryableValues);
+        const ArrayMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, ArrayValued, NonqueryableValues);
         // Valid
         new ArrayMapCtor<string, string[]>();
         //@ts-expect-error
@@ -64,7 +71,7 @@ export class ValueTypeConstraintsTests
 
     setValuedRequiresSetValue()
     {
-        const SetMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, SetValued, NonqueryableValues);
+        const SetMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, SetValued, NonqueryableValues);
         // Valid
         new SetMapCtor<string, Set<string>>();
         // Invalid
@@ -79,7 +86,7 @@ export class KeyQueryFunctionTypingTests
 {
     nonQueryableKeysNoQueryMethods()
     {
-        const NonQueryMapCtor = AssociativeMap(UnorderedIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const NonQueryMapCtor = AssociativeMap(UnorderedKeysArray, NonqueryableKeys, RawValues, NonqueryableValues);
         const map = new NonQueryMapCtor<string[], number>();
         // No query methods available
         //@ts-expect-error
@@ -90,7 +97,7 @@ export class KeyQueryFunctionTypingTests
 
     queryableUnorderedKeysHasIndexedQuery()
     {
-        const QueryUnorderedMapCtor = AssociativeMap(UnorderedIndex, QueryableKeys, RawValued, NonqueryableValues);
+        const QueryUnorderedMapCtor = AssociativeMap(UnorderedKeysArray, QueryableKeys, RawValues, NonqueryableValues);
         const map = new QueryUnorderedMapCtor<string[], number>();
         // Available
         const results: MapQueryResult<string[], number> = map.queryKeysIndexedWith(['key']);
@@ -100,7 +107,7 @@ export class KeyQueryFunctionTypingTests
 
     queryableOrderedKeysHasPartialAndMatchingQuery()
     {
-        const QueryOrderedMapCtor = AssociativeMap(OrderedIndex, QueryableKeys, RawValued, NonqueryableValues);
+        const QueryOrderedMapCtor = AssociativeMap(OrderedKeysArray, QueryableKeys, RawValues, NonqueryableValues);
         const map = new QueryOrderedMapCtor<string[], number>();
         // Available: unordered + ordered
         const results1: MapQueryResult<string[], number> = map.queryKeysIndexedWith(['key']);
@@ -111,7 +118,7 @@ export class KeyQueryFunctionTypingTests
 
     queryableStructuredKeysHasPartialAndMatchingQuery()
     {
-        const QueryStructuredMapCtor = AssociativeMap(StructuredIndex, QueryableKeys, RawValued, NonqueryableValues);
+        const QueryStructuredMapCtor = AssociativeMap(StructuredKeys, QueryableKeys, RawValues, NonqueryableValues);
         const map = new QueryStructuredMapCtor<{ a: string; }, number>();
         // Available: unordered + structured
         const results1: MapQueryResult<{ a: string; }, number> = map.queryKeysIndexedWith(['key']);
@@ -125,7 +132,7 @@ export class ValueQueryFunctionTypingTests
 {
     nonQueryableValuesNoQueryMethods()
     {
-        const NonQueryValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const NonQueryValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, RawValues, NonqueryableValues);
         const map = new NonQueryValueMapCtor<string, number>();
         // No value query methods
         //@ts-expect-error
@@ -136,7 +143,7 @@ export class ValueQueryFunctionTypingTests
 
     queryableRawValuesHasContainingQuery()
     {
-        const QueryRawValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, RawValued, QueryableValues);
+        const QueryRawValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, RawValues, QueryableValues);
         const map = new QueryRawValueMapCtor<string, number>();
         // Available for raw: containing (exact match since single)
         const results: MapQueryResult<string, number> = map.queryValuesContaining([42]);
@@ -146,7 +153,7 @@ export class ValueQueryFunctionTypingTests
 
     queryableArrayValuesHasMatchingQuery()
     {
-        const QueryArrayValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, ArrayValued, QueryableValues);
+        const QueryArrayValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, ArrayValued, QueryableValues);
         const map = new QueryArrayValueMapCtor<string, string[]>();
         // Available: containing + matching
         const results1: MapQueryResult<string, string[]> = map.queryValuesContaining(['val1']);
@@ -155,7 +162,7 @@ export class ValueQueryFunctionTypingTests
 
     queryableSetValuesHasMatchingQuery()
     {
-        const QuerySetValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, SetValued, QueryableValues);
+        const QuerySetValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, SetValued, QueryableValues);
         const map = new QuerySetValueMapCtor<string, Set<string>>();
         // Available: containing + matching (though set order irrelevant)
         const results1: MapQueryResult<string, Set<string>> = map.queryValuesContaining(['val1']);
@@ -167,7 +174,7 @@ export class ValueStructureFunctionTypingTests
 {
     rawValuedNoCollectionMethods()
     {
-        const RawValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, RawValued, NonqueryableValues);
+        const RawValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, RawValues, NonqueryableValues);
         const map = new RawValueMapCtor<string, number>();
         // No array/set methods
         //@ts-expect-error
@@ -178,7 +185,7 @@ export class ValueStructureFunctionTypingTests
 
     arrayValuedHasArrayMethods()
     {
-        const ArrayValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, ArrayValued, NonqueryableValues);
+        const ArrayValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, ArrayValued, NonqueryableValues);
         const map = new ArrayValueMapCtor<string, string[]>();
         // Available array methods, return number (length)
         const pushLen: number = map.push('key', 'new');
@@ -192,7 +199,7 @@ export class ValueStructureFunctionTypingTests
 
     setValuedHasSetMethods()
     {
-        const SetValueMapCtor = AssociativeMap(RawIndex, NonqueryableKeys, SetValued, NonqueryableValues);
+        const SetValueMapCtor = AssociativeMap(RawKeys, NonqueryableKeys, SetValued, NonqueryableValues);
         type SetMap = InstanceType<typeof SetValueMapCtor<string, Set<string>>>;
         const map = new SetValueMapCtor<string, Set<string>>();
         // Available set methods

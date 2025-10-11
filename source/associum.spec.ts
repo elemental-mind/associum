@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { OrderedMultiKeyMap, QueryableStructuredMultiKeyMap, StructuredMultiKeyMap, UnorderedMultiKeyMap, type MapQueryResult, } from "./associum.ts";
+import { AssociativeMap, NonqueryableValues, OrderedMultiKeyMap, QueryableKeys, RawValues, StructuredKeys, StructuredMultiKeyMap, UnorderedMultiKeyMap, type MapQueryResult } from "./associum.ts";
 
 export class UnorderedKeymapTests
 {
@@ -275,14 +275,15 @@ export class StructuredKeyMapTests
     shouldQueryPartial()
     {
         type UserRole = { user: string; role: string; };
-        const map = new QueryableStructuredMultiKeyMap<UserRole, number>();
+        const QueryableStructuredMap = AssociativeMap(StructuredKeys, QueryableKeys, RawValues, NonqueryableValues);
+        const map = new QueryableStructuredMap<UserRole, number>();
 
         map.set({ user: "u1", role: "admin" }, 1);
         map.set({ user: "u1", role: "editor" }, 0);
         map.set({ user: "u2", role: "admin" }, 1);
 
         const results = map.queryKeysMatching({ user: "u1" });
-        const roles = results.map((result: MapQueryResult<UserRole, number>) => result.key.role).sort();
+        const roles = results.map(result => result.key.role).sort();
 
         assert.equal(roles.length, 2);
         assert.equal(roles.join(","), "admin,editor");
@@ -342,6 +343,7 @@ export class StructuredKeyMapTests
         map.set({ user: "u1", role: "admin", level: 0 }, 9);
 
         assert.equal(map.get({ user: "u1", role: "admin", level: 0 }), 9);
+        //@ts-expect-error
         assert.equal(map.get({ user: "u1", role: "admin" }), undefined);
     }
 
